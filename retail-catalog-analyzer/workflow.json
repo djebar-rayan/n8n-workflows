@@ -1,0 +1,308 @@
+{
+  "name": "Retail Catalog Analyzer",
+  "nodes": [
+    {
+      "parameters": {
+        "resource": "file",
+        "operation": "convert"
+      },
+      "type": "@cloudconvert/n8n-nodes-preview-cloudconvert.cloudConvert",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "63efa149-a8c2-4d59-9b05-cb2fbb5ec04b",
+      "name": "CloudConvert",
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "text": "Visually analyse the attached page from this large-retail promotional catalogue.\nYour goal is to extract only non-food products (drugstore items, cleaning, hygiene, brushware, small appliances, household goods, etc.). You MUST ignore anything that is eaten or drunk.\n\nReturn strictly a JSON array of objects with exactly the following structure for every product found. Keep the field names exactly as written below — they feed downstream code:\n\n\"nom_produit\": Full product name and brand (e.g. \"TEFAL REMOVABLE-HANDLE PAN SET\").\n\n\"reference\": The catalogue reference if shown (look for markers such as \"Réf.\", \"Ref\", etc. e.g. \"430125\"). Set to null if it cannot be found.\n\n\"ancien_prix\": The previous price (decimal number with a dot, no currency. e.g. 164.98. null if not found). Take care to read the cents accurately.\n\n\"nouveau_prix\": The final promotional price (decimal number with a dot, no currency. e.g. 65.99).\n\n\"type_promo\": The promotional mechanic shown on the image (e.g. \"60% instant discount\", \"50% off the second item\", \"Loyalty cashback\", or null).\n\n\"specificites\": Capture EVERY useful technical or packaging characteristic (dimensions, capacity, power, weight, piece count…). Set to null only if the page truly shows no technical detail.\n\n\"categorie\": Infer the category (e.g. \"Cookware\", \"Home linen\", \"Hygiene\", \"Small appliances\").\n\nUse the visual layout (boxes, large numbers) to make sure each price is matched to the correct product.\nIf the page contains no non-food product, return only an empty array: []\n\nTake your time, scan the image top-to-bottom and left-to-right, and make sure NO non-food product or its specifications are missed.",
+        "inputType": "base64",
+        "options": {
+          "maxTokens": 10000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "f8c067df-c158-447c-b9c8-cb1e2857277a",
+      "name": "Analyze image"
+    },
+    {
+      "parameters": {
+        "jsCode": "let tousLesProduits = [];\n\n// 1. Merge results from every page\nfor (const item of $input.all()) {\n  let texteIA = \"\";\n  \n  if (Array.isArray(item.json) && item.json[0] && item.json[0].content) {\n    texteIA = item.json[0].content[0].text;\n  } else if (item.json.content && Array.isArray(item.json.content)) {\n    texteIA = item.json.content[0].text;\n  } else if (item.json.message && item.json.message.content) {\n    texteIA = typeof item.json.message.content === 'string' ? item.json.message.content : item.json.message.content[0].text;\n  } else if (item.json.text) {\n    texteIA = item.json.text;\n  }\n\n  if (!texteIA) continue;\n  \n  texteIA = texteIA.replace(/```json/g, \"\").replace(/```/g, \"\").trim();\n  \n  try {\n    let listeProduits = JSON.parse(texteIA);\n    if (Array.isArray(listeProduits) && listeProduits.length > 0) {\n      tousLesProduits = tousLesProduits.concat(listeProduits);\n    }\n  } catch (error) {\n    continue;\n  }\n}\n\n// 2. Compute discounts cleanly with proper decimal handling\ntousLesProduits.forEach(produit => {\n  // Make sure prices are numeric (replace a comma with a dot if the AI slipped up)\n  let ancien = parseFloat(String(produit.ancien_prix).replace(',', '.'));\n  let nouveau = parseFloat(String(produit.nouveau_prix).replace(',', '.'));\n\n  if (!isNaN(ancien) && !isNaN(nouveau) && ancien > 0) {\n    // Savings rounded to 2 decimal places (e.g. 98.99)\n    produit.economie_euros = parseFloat((ancien - nouveau).toFixed(2));\n    // Discount percentage\n    produit.pourcentage_reduction = Math.round((produit.economie_euros / ancien) * 100);\n  } else {\n    produit.economie_euros = 0;\n    produit.pourcentage_reduction = 0;\n  }\n  \n  // Write the cleaned values back to the object\n  produit.ancien_prix = ancien;\n  produit.nouveau_prix = nouveau;\n});\n\n// 3. Sort from largest discount percentage to smallest\ntousLesProduits.sort((a, b) => b.pourcentage_reduction - a.pourcentage_reduction);\n\n// 4. Return the final result\nreturn [{\n  json: {\n    catalogue_complet: tousLesProduits,\n    total_produits_trouves: tousLesProduits.length\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "3b768584-4863-42d9-b5fa-21f000c039b6",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1lOK7zRrZTe7LKiR0ra6OZAPrpON9fHxEzZzF0_NKdac",
+          "mode": "list",
+          "cachedResultName": "Produits",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1lOK7zRrZTe7LKiR0ra6OZAPrpON9fHxEzZzF0_NKdac/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1956243746,
+          "mode": "list",
+          "cachedResultName": "produits",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1lOK7zRrZTe7LKiR0ra6OZAPrpON9fHxEzZzF0_NKdac/edit#gid=1956243746"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Nom du Produit": "={{ $fromAI('nom_produit') }}",
+            "Prix Promo": "={{ $fromAI('prix') }}",
+            "Economie": "={{ $fromAI('economie') }}",
+            "Réduction (%)": "={{ $fromAI('reduction') }}",
+            "Note sur 10": "={{ $fromAI('note') }}",
+            "Justification": "={{ $fromAI('justification') }}",
+            "Référence": "={{ $fromAI('reference') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Nom du Produit",
+              "displayName": "Nom du Produit",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Prix Promo",
+              "displayName": "Prix Promo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Economie",
+              "displayName": "Economie",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Réduction (%)",
+              "displayName": "Réduction (%)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Référence",
+              "displayName": "Référence",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Note sur 10",
+              "displayName": "Note sur 10",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Justification",
+              "displayName": "Justification",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        1008,
+        192
+      ],
+      "id": "fee2cf08-c6ee-4223-a10b-487b07744342",
+      "name": "Append row in sheet in Google Sheets"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Here is the full list of products extracted from the catalogue:\n\n{{ JSON.stringify($json.catalogue_complet) }}\n\nAnalyse this dataset, find the Top 5, score them, justify your choice, and use your Google Sheets tool DIRECTLY to record them. Do not ask me any questions, do not wait for approval — call the tool immediately.",
+        "options": {
+          "systemMessage": "You are an expert in e-commerce and retail strategy, specialised in buying-and-reselling. Your role is to analyse a catalogue of discounted products (priced in Euros) and identify the commercial gems.\n\nYour mission:\n\n1. Analyse the product list provided by the user.\n\n2. Strictly select the 5 products with the greatest resale-profit potential.\n\n3. Your selection criteria must be: discount percentage, real savings in Euros (€), the type of promotion (favour instant discounts), and how easy the product is to resell.\n\n4. For each of these 5 products, give a resale-potential score out of 10.\n\n5. Write a short, sharp justification explaining why it is a great deal.\n\nABSOLUTE RULE: once your selection is ready, you MUST use the provided Google Sheets tool to insert the 5 products into the sheet. Call the tool once for each product. Make sure ALL the requested fields are passed to the tool, including the product reference. Do not just list the products in chat — act and fill the sheet."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        832,
+        0
+      ],
+      "id": "fa7704bf-b350-4cd5-b159-5532d2c6bea9",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "formTitle": "Catalog Automation",
+        "formDescription": "Upload your catalog",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Catalog",
+              "fieldType": "file"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e538954b-91f7-46ad-84f8-1a6ab3a97267",
+      "name": "On form submission",
+      "webhookId": "1ca50ee3-8542-4002-a69a-1115c61c8b95"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        800,
+        192
+      ],
+      "id": "552042ca-4731-45c8-b50b-566bd8905360",
+      "name": "OpenAI Chat Model"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "CloudConvert": {
+      "main": [
+        [
+          {
+            "node": "Analyze image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze image": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append row in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "CloudConvert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "f269b7dc-febf-424a-959d-fa1959e60a4b",
+  "meta": {
+    "instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a"
+  },
+  "id": "W-4VP7RzwEg29QSWZo84l",
+  "tags": []
+}

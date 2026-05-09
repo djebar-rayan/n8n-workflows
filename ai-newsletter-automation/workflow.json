@@ -1,0 +1,414 @@
+{
+  "name": "AI Newsletter Automation",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 22
+            }
+          ]
+        }
+      },
+      "id": "744776eb-2d54-4ca0-ab7c-219a54f98988",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -208,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://openai.com/news/rss.xml",
+        "options": {}
+      },
+      "id": "2c532fde-de0c-4f1c-9312-6b1cf02ddf05",
+      "name": "OpenAI RSS",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://blog.google/technology/ai/rss/",
+        "options": {}
+      },
+      "id": "98fe3177-48a0-415c-9148-adbcd1a47e03",
+      "name": "Google AI RSS",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "numberInputs": 6
+      },
+      "id": "c59db9e4-303c-4b3c-b4bd-92ae496abc89",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        224,
+        352
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const articles = [];\nfor (const item of $input.all()) {\n  if (item.json.title) {\n    articles.push({\n      title: item.json.title,\n      summary: item.json.contentSnippet || item.json.summary || '',\n      link: item.json.link || '',\n      source: 'AI News'\n    });\n  }\n}\nreturn articles.slice(0, 5).map(article => ({ json: article }));"
+      },
+      "id": "f45a9fd9-141d-4cbb-bd35-82106c7534f3",
+      "name": "Filter Articles",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "text",
+              "name": "text",
+              "type": "string",
+              "value": "={{ $input.all().map(item => item.json.title + ': ' + item.json.summary).join('\\n\\n') }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "800058da-dd69-4629-9157-533c7ef04a61",
+      "name": "Prepare Text",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        608,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4.1-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4.1-MINI"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 1000,
+          "temperature": 0.7
+        }
+      },
+      "id": "25c009af-26c1-422e-b2b9-be1dd2ce114a",
+      "name": "OpenAI",
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        768,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputData = $input.first().json;\nconst date = new Date().toLocaleDateString('en-US', { \n  weekday: 'long', \n  year: 'numeric', \n  month: 'long', \n  day: 'numeric' \n});\n\nlet content = 'Content unavailable';\n\n// Extract content (existing logic)\nif (inputData?.choices && Array.isArray(inputData.choices) && inputData.choices.length > 0) {\n  content = inputData.choices[0].message?.content || inputData.choices[0].text || 'No content in choices[0]';\n} else if (inputData?.message?.content) {\n  content = inputData.message.content;\n} else if (inputData?.content) {\n  content = inputData.content;\n} else if (inputData?.text) {\n  content = inputData.text;\n} else if (typeof inputData === 'string') {\n  content = inputData;\n} else {\n  content = `Received data structure: ${JSON.stringify(inputData, null, 2)}`;\n}\n\n// Helper that splits the raw output into structured sections\nfunction formatContent(rawContent) {\n  // Split into sections based on the leading numbering\n  const sections = rawContent.split(/(?=\\d+\\.\\s\\*\\*)/);\n  let formattedSections = '';\n  \n  sections.forEach(section => {\n    if (section.trim()) {\n      // Extract the title and the body of each section\n      const lines = section.trim().split('\\n');\n      const titleLine = lines[0];\n      const contentLines = lines.slice(1).join(' ').trim();\n      \n      if (titleLine.includes('**')) {\n        const title = titleLine.replace(/^\\d+\\.\\s/, '').replace(/\\*\\*/g, '');\n        formattedSections += `\n          <div style=\"margin-bottom: 25px; padding: 20px; background: #f8f9fa; border-left: 4px solid #007bff; border-radius: 8px;\">\n            <h3 style=\"color: #007bff; margin: 0 0 10px 0; font-size: 18px;\">${title}</h3>\n            <p style=\"margin: 0; line-height: 1.6; color: #333;\">${contentLines}</p>\n          </div>\n        `;\n      }\n    }\n  });\n  \n  return formattedSections;\n}\n\nconst formattedContent = formatContent(content);\n\nconst html = `\n<!DOCTYPE html>\n<html>\n<head>\n  <meta charset=\"utf-8\">\n  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n  <title>AI Newsletter</title>\n</head>\n<body style=\"margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f4f4;\">\n  <div style=\"max-width: 600px; margin: 0 auto; background-color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);\">\n    \n    <!-- Header -->\n    <div style=\"background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px 20px; text-align: center;\">\n      <h1 style=\"color: white; margin: 0; font-size: 28px; font-weight: 300; letter-spacing: 1px;\">\n        🤖 AI Newsletter\n      </h1>\n      <p style=\"color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;\">\n        ${date}\n      </p>\n    </div>\n    \n    <!-- Content -->\n    <div style=\"padding: 30px 20px;\">\n      <div style=\"margin-bottom: 25px;\">\n        <h2 style=\"color: #333; font-size: 22px; margin: 0 0 15px 0; border-bottom: 2px solid #eee; padding-bottom: 10px;\">\n          📈 Latest AI News Roundup\n        </h2>\n      </div>\n      \n      ${formattedContent}\n      \n      <!-- Footer info -->\n      <div style=\"margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 8px; text-align: center;\">\n        <p style=\"margin: 0; color: #666; font-size: 14px;\">\n          💡 <em>Questions or feedback? Reply to this email and ask for more details on any topic.</em>\n        </p>\n      </div>\n    </div>\n    \n    <!-- Footer -->\n    <div style=\"background: #333; padding: 20px; text-align: center;\">\n      <p style=\"color: #ccc; margin: 0; font-size: 12px;\">\n        Newsletter generated automatically • ${new Date().getFullYear()}\n      </p>\n    </div>\n    \n  </div>\n</body>\n</html>\n`;\n\nreturn [{\n  json: {\n    html: html,\n    subject: `🤖 AI Newsletter - ${date}`\n  }\n}];"
+      },
+      "id": "775ca66a-5f5f-4be9-b755-90faa80381bf",
+      "name": "Format Email",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1072,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "djebar.rayan75@gmail.com",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "4b25aa47-3385-42b7-894f-cf3d975f6a6e",
+      "name": "Gmail",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        1248,
+        416
+      ],
+      "webhookId": "43a9f1b6-2b67-4afb-8602-df0900d541b7"
+    },
+    {
+      "parameters": {
+        "url": "https://blogs.microsoft.com/ai/feed/",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        320
+      ],
+      "id": "c5aede8b-03ce-4b13-a58c-8c9d7e926534",
+      "name": "Microsoft AI Blog RSS"
+    },
+    {
+      "parameters": {
+        "url": "https://news.mit.edu/rss/feed",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        480
+      ],
+      "id": "81f0af73-5ff0-4164-8deb-6f8f8b8491fc",
+      "name": "MIT AI News RSS"
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_news.xml",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        624
+      ],
+      "id": "38cbc0fc-fafb-4eb1-b4ea-08a76621a585",
+      "name": "Anthropic Blog RSS"
+    },
+    {
+      "parameters": {
+        "url": "https://engineering.fb.com/feed/",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        768
+      ],
+      "id": "d282e96c-4146-4cc8-813c-0054a784f10a",
+      "name": "Meta AI Blog RSS"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.filter(\n  item =>\n    (item.json.title && /artificial intelligence|ai|machine learning/i.test(item.json.title)) ||\n    (item.json.description && /artificial intelligence|ai|machine learning/i.test(item.json.description))\n);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        688
+      ],
+      "id": "7a190890-492e-4f88-90ee-132cf02459cc",
+      "name": "Code"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "OpenAI RSS",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google AI RSS",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Microsoft AI Blog RSS",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "MIT AI News RSS",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Anthropic Blog RSS",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Meta AI Blog RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI RSS": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google AI RSS": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Filter Articles",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Articles": {
+      "main": [
+        [
+          {
+            "node": "Prepare Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Text": {
+      "main": [
+        [
+          {
+            "node": "OpenAI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI": {
+      "main": [
+        [
+          {
+            "node": "Format Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Email": {
+      "main": [
+        [
+          {
+            "node": "Gmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Microsoft AI Blog RSS": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "MIT AI News RSS": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Blog RSS": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Meta AI Blog RSS": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 5
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "1fa2be25-a972-408b-bd4f-de33b15ddcb7",
+  "meta": {
+    "instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a"
+  },
+  "id": "o-3qEkqdPXCkvDJYqZO1f",
+  "tags": []
+}

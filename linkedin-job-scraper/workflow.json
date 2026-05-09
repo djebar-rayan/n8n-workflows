@@ -1,0 +1,591 @@
+{
+  "name": "LinkedIn Job Scraper",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "LinkedIn Job Search",
+        "formDescription": "Fill in this form to launch your personalised job search",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Last Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "First Name",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Email",
+              "fieldType": "email",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Job Title",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "City",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Country",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Job Type (Optional)",
+              "fieldType": "radio",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Full-time"
+                  },
+                  {
+                    "option": "Part-time"
+                  },
+                  {
+                    "option": "Contract"
+                  },
+                  {
+                    "option": "Internship"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Work Schedule (Optional)",
+              "fieldType": "radio",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "On-site"
+                  },
+                  {
+                    "option": "Remote"
+                  },
+                  {
+                    "option": "Hybrid (on-site + remote)"
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cf983782-f64c-44de-8091-bb0c12173604",
+      "name": "Form Trigger",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.3,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "037405fd-8510-4a3f-b95b-ff2f174b7e6d",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1LiKLWKYmekpIocbHFni0P0d5F3yAXYqA-16pF8phom8",
+          "mode": "list",
+          "cachedResultName": "Suivi Recherche Emploi n8n",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1LiKLWKYmekpIocbHFni0P0d5F3yAXYqA-16pF8phom8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1403674011,
+          "mode": "list",
+          "cachedResultName": "feuille",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1LiKLWKYmekpIocbHFni0P0d5F3yAXYqA-16pF8phom8/edit#gid=1403674011"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "userLastName": "={{ $json['Last Name'] }}",
+            "userFirstName": "={{ $json['First Name'] }}",
+            "submissionTimestamp": "={{ $json.submittedAt }}",
+            "runId": "={{ $execution.id }}",
+            "userEmail": "={{ $json['Email'] }}",
+            "jobTitleQuery": "={{ $json['Job Title'] }}",
+            "locationQueryCity": "={{ $json['City'] }}",
+            "locationQueryCountry": "={{ $json['Country'] }}",
+            "JobType": "={{ $json['Job Type (Optional)'] }}",
+            "WorkSchedule": "={{ $json['Work Schedule (Optional)'] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "runId",
+              "displayName": "runId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "submissionTimestamp",
+              "displayName": "submissionTimestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "userFirstName",
+              "displayName": "userFirstName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "userLastName",
+              "displayName": "userLastName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "userEmail",
+              "displayName": "userEmail",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "jobTitleQuery",
+              "displayName": "jobTitleQuery",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "locationQueryCity",
+              "displayName": "locationQueryCity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "locationQueryCountry",
+              "displayName": "locationQueryCountry",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "JobType",
+              "displayName": "JobType",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "WorkSchedule",
+              "displayName": "WorkSchedule",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "scrapedJobs",
+              "displayName": "scrapedJobs",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "selectedJobs",
+              "displayName": "selectedJobs",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "hiringManagers",
+              "displayName": "hiringManagers",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "finalActionTimestamp",
+              "displayName": "finalActionTimestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "00afc8f9-5de0-41ff-8158-6fa1d44305a0",
+      "name": "Create Tracking Entry",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        192,
+        0
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.apify.com/v2/acts/worldunboxer~rapid-linkedin-scraper/run-sync-get-dataset-items?token=YOUR_APIFY_API_TOKEN",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"job_title\": \"{{ $json.jobTitleQuery }}\",\n  \"location\": \"{{ $json.locationQueryCity }}, {{ $json.locationQueryCountry }}\",\n  \"job_post_time\": \"r604800\",\n  \"work_schedule\": \"{{ $json.work_schedule }}\",\n  \"job_type\": \"{{ $json.job_type }}\",\n  \"jobs_entries\": 2\n}\n",
+        "options": {}
+      },
+      "id": "4d06cf7a-dcaa-4852-8145-d04efef74492",
+      "name": "Start LinkedIn Scraping",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        560,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "id": "fb5e1e6d-3a71-4787-9770-89a6531fd666",
+      "name": "Wait for Scraping",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        752,
+        0
+      ],
+      "webhookId": "14c0cd05-05fd-43e7-abb5-05600d087602"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "71a4957d-a8fd-40e4-85ac-5bbc355c742d",
+              "leftValue": "={{ $json.location }}",
+              "rightValue": "Île-de-France, France",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        944,
+        0
+      ],
+      "id": "9fd3cbba-0012-4c35-9762-3a192129bbcb",
+      "name": "Filter"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "5f1128c4-111e-4f1b-a751-485d564d4e6b",
+              "name": "Titre_Job",
+              "value": "={{ $json.job_title }}",
+              "type": "string"
+            },
+            {
+              "id": "c0422c3c-e007-4ecc-8254-25e9014e6a98",
+              "name": "Nom_Entreprise",
+              "value": "={{ $json.company_name }}",
+              "type": "string"
+            },
+            {
+              "id": "89fffab6-0d23-4d27-a514-6a830ceabe3a",
+              "name": "Localisation",
+              "value": "={{ $json.location }}",
+              "type": "string"
+            },
+            {
+              "id": "6dd604ab-553a-4c50-9687-383132453ed2",
+              "name": "Date_du_poste",
+              "value": "={{ $json.time_posted }}",
+              "type": "string"
+            },
+            {
+              "id": "e872a5ad-71c8-4a0d-9778-081d9998023d",
+              "name": "Job_Description_Html",
+              "value": "={{ $json.job_description_raw_html }}",
+              "type": "string"
+            },
+            {
+              "id": "ada02a96-8bfd-4310-b1fb-718ab15efd15",
+              "name": "Type_Emploi",
+              "value": "={{ $json.employment_type }}",
+              "type": "string"
+            },
+            {
+              "id": "70e0a3eb-5b0b-426d-9483-dbf177c0b770",
+              "name": "Niveau_Requis",
+              "value": "={{ $json.seniority_level }}",
+              "type": "string"
+            },
+            {
+              "id": "70ed8ea6-20c9-4586-8bd8-1e3d780c7092",
+              "name": "Lien_Job",
+              "value": "={{ $json.job_url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1136,
+        0
+      ],
+      "id": "a51ed042-7d67-408f-8d28-1de6e5e4ece8",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  // JobType label → LinkedIn API single-letter code\n  let code;\n  switch (item.json.JobType) {\n    case \"Full-time\":\n      code = \"F\";\n      break;\n    case \"Part-time\":\n      code = \"P\";\n      break;\n    case \"Contract\":\n      code = \"C\";\n      break;\n    case \"Internship\":\n      code = \"I\";\n      break;\n    default:\n      code = \"\";\n  }\n\n  // WorkSchedule label → LinkedIn API numeric code\n  let modeTravail;\n  switch (item.json.WorkSchedule) {\n    case \"On-site\":\n      modeTravail = \"1\";\n      break;\n    case \"Remote\":\n      modeTravail = \"2\";\n      break;\n    case \"Hybrid (on-site + remote)\":\n      modeTravail = \"3\";\n      break;\n    default:\n      modeTravail = \"1\";\n  }\n\n  // Return the enriched item\n  return {\n    json: {\n      ...item.json,\n      job_type: code,        // letter code for the API\n      work_schedule: modeTravail // numeric code for the API\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        368,
+        0
+      ],
+      "id": "a2ac5ad6-356f-40bd-8ab2-d9429040c992",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "fromEmail": "toz.fouhen@gmail.com",
+        "toEmail": "={{ $json.emailTrigger }}",
+        "subject": "Your selected LinkedIn job opportunities",
+        "html": "=<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n<title>Your New LinkedIn Opportunities</title>\n<style>\n  body {\n    margin: 0;\n    padding: 0;\n    background: #f5f5f5;\n    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;\n  }\n  .container {\n    max-width: 600px;\n    width: 98vw;\n    margin: 0 auto;\n    background: #fff;\n    border-radius: 10px;\n    overflow: hidden;\n    box-shadow: 0 0 14px rgba(0,0,0,0.07);\n  }\n  .header {\n    background: linear-gradient(135deg,#0077B5 0%,#00A0DC 100%);\n    color: #fff;\n    text-align: center;\n    padding: 35px 10px 20px 10px;\n  }\n  .header h1 {\n    margin: 0 0 10px 0;\n    font-size: 22px;\n    font-weight: bold;\n  }\n  .header p {\n    margin: 0;\n    font-size: 15px;\n    opacity: 0.92;\n  }\n  .content {\n    padding: 17px 5vw 20px 5vw;\n  }\n  .job-card {\n    background: #fff;\n    border: 1px solid #e8edf3;\n    border-radius: 10px;\n    padding: 17px 10px 13px 10px;\n    margin-bottom: 16px;\n    box-shadow: 0 2px 8px rgba(0,0,0,0.045);\n    transition: box-shadow 0.3s ease;\n  }\n  .job-card:hover {\n    box-shadow: 0 4px 12px rgba(0,0,0,0.08);\n  }\n  .job-header {\n    border-bottom: 2px solid #f0f3f7;\n    padding-bottom: 12px;\n    margin-bottom: 11px;\n  }\n  .job-title {\n    font-size: 17px;\n    font-weight: bold;\n    margin: 0 0 6px 0;\n  }\n  .job-title a {\n    color: #0077B5;\n    text-decoration: none;\n  }\n  .job-title a:hover {\n    color: #005885;\n  }\n  .company-name {\n    font-size: 15px;\n    color: #34495e;\n    font-weight: 500;\n    margin-bottom: 8px;\n  }\n  .job-meta {\n    margin-top: 2px;\n    font-size: 13px;\n    color: #888;\n    line-height: 1.5;\n  }\n  .meta-item {\n    display: inline-block;\n    background: #f0f4f8;\n    padding: 4px 10px;\n    margin: 0 6px 4px 0;\n    border-radius: 15px;\n    font-size: 12px;\n    color: #0077B5;\n    font-weight: 500;\n  }\n  .job-description {\n    color: #4a5568;\n    line-height: 1.6;\n    font-size: 14px;\n    margin-top: 12px;\n    margin-bottom: 6px;\n  }\n  .btn-container {\n    text-align: center;\n    margin-top: 12px;\n  }\n  .btn-apply {\n    display: inline-block;\n    background: #0077B5;\n    color: #fff;\n    padding: 10px 28px;\n    border-radius: 24px;\n    font-weight: 600;\n    font-size: 13px;\n    text-decoration: none;\n    margin-top: 8px;\n    transition: background-color 0.3s ease;\n  }\n  .btn-apply:hover {\n    background: #005885;\n  }\n  .footer {\n    background: linear-gradient(to bottom,#f8fafc,#fff);\n    padding: 19px 5px;\n    text-align: center;\n    color: #7f8c8d;\n    font-size: 13px;\n    border-top: 1px solid #e8edf3;\n  }\n  .footer strong {\n    color: #2c3e50;\n  }\n  @media only screen and (max-width: 640px) {\n    .container, .job-card, .header, .content { max-width: 98vw !important;}\n    .content {padding: 9px 2vw 12px 2vw;}\n    .job-header, .company-name {font-size:13px;}\n    .job-title {font-size:15px;}\n  }\n</style>\n</head>\n<body>\n<div class=\"container\">\n  <div class=\"header\">\n    <h1>🎯 Your New LinkedIn Opportunities</h1>\n    <p>{{ $json.nbJobs }} job(s) matching your criteria</p>\n  </div>\n  <div class=\"content\">\n    {{ $json.allJobsHtml }}\n  </div>\n  <div class=\"footer\">\n    <p><strong>Good luck with your job search!</strong></p>\n    <p style=\"font-size:12px;opacity:0.7;margin-top:10px;\">\n      Email generated automatically • © 2025\n    </p>\n  </div>\n</div>\n</body>\n</html>\n",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "b0c43810-84d1-4b4d-9a68-1dfc713dd542",
+      "name": "Send Selection Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1536,
+        0
+      ],
+      "webhookId": "1115a609-6bac-4b38-8081-1228720fe0fd",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const itemsArray = Array.isArray(items) ? items : [];\nconst nbJobs = itemsArray.length;\n\n// Try to recover the form trigger email from the first item:\nlet email = '';\nif (nbJobs > 0 && itemsArray[0].json && itemsArray[0].json[\"Email\"]) {\n  email = itemsArray[0].json[\"Email\"];\n}\n\nconst htmlJobs = itemsArray.map(item => `\n  <div class=\"job-card\">\n    <div class=\"job-header\">\n      <h2 class=\"job-title\">\n        <a href=\"${item.json.Lien_Job}\" target=\"_blank\">${item.json.Titre_Job}</a>\n      </h2>\n      <div class=\"company-name\">${item.json.Nom_Entreprise}</div>\n      <div class=\"job-meta\">\n        <span class=\"meta-item\">📍 ${item.json.Localisation}</span>\n        <span class=\"meta-item\">⏰ ${item.json.Date_du_poste}</span>\n        ${item.json.Type_Emploi ? `<span class=\"meta-item\">💼 ${item.json.Type_Emploi}</span>` : ''}\n        ${item.json.Niveau_Requis ? `<span class=\"meta-item\">📊 ${item.json.Niveau_Requis}</span>` : ''}\n      </div>\n    </div>\n    <div class=\"job-description\">${item.json.Job_Description_Html}</div>\n    <div class=\"btn-container\" style=\"text-align:center;margin-top:20px;\">\n      <a href=\"${item.json.Lien_Job}\" class=\"btn-apply\" target=\"_blank\" style=\"display:inline-block;background:#0077B5;color:white;padding:12px 30px;border-radius:25px;text-decoration:none;font-weight:600;\">\n        View on LinkedIn →\n      </a>\n    </div>\n  </div>\n`).join('\\n');\n\nreturn [\n  {\n    json: {\n      nbJobs: nbJobs,\n      allJobsHtml: htmlJobs,\n      emailTrigger: $('Form Trigger').first().json[\"Email\"]  // <--- form submitter email\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1328,
+        0
+      ],
+      "id": "c292c23d-5cf7-4e9a-a61c-1f17614723ea",
+      "name": "Code Fusion"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Form Trigger": {
+      "main": [
+        [
+          {
+            "node": "Create Tracking Entry",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Tracking Entry": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start LinkedIn Scraping": {
+      "main": [
+        [
+          {
+            "node": "Wait for Scraping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait for Scraping": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Code Fusion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Start LinkedIn Scraping",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code Fusion": {
+      "main": [
+        [
+          {
+            "node": "Send Selection Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "2b0d84c7-7a2c-4fde-8121-999cce0e8815",
+  "meta": {
+    "instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a"
+  },
+  "id": "7zBuanW5cpwz6y2IJVbqv",
+  "tags": [
+    {
+      "name": "LinkedIn",
+      "id": "C5rBkkiDWaXsb7c4",
+      "updatedAt": "2026-05-08T19:24:20.157Z",
+      "createdAt": "2026-05-08T19:24:20.157Z"
+    },
+    {
+      "name": "Job Search",
+      "id": "XlcBUGOXnjooaKsJ",
+      "updatedAt": "2026-05-08T19:24:20.163Z",
+      "createdAt": "2026-05-08T19:24:20.163Z"
+    },
+    {
+      "name": "Apify",
+      "id": "tywYqJyZ4IhJ1YCH",
+      "updatedAt": "2026-05-08T19:24:20.171Z",
+      "createdAt": "2026-05-08T19:24:20.171Z"
+    }
+  ]
+}

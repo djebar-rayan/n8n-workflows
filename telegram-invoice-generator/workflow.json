@@ -1,0 +1,437 @@
+{
+  "name": "Telegram Invoice Generator",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -816,
+        16
+      ],
+      "id": "89101e44-eee7-47d7-90b3-4ec3e0221b4f",
+      "name": "Telegram Trigger",
+      "webhookId": "890973f0-3afe-40f1-987d-7240da728f5f"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.message.text }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    },
+                    "id": "a78a1d21-a48f-427c-940b-3048b6d48bc1"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "text"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "ec1b40b9-2d11-45c0-8aa9-afca793e4a5f",
+                    "leftValue": "={{ $json.message.voice.file_id }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "exists",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "voice"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -608,
+        16
+      ],
+      "id": "d7a729fe-584c-4841-8a73-39485e63a2ab",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "resource": "file",
+        "fileId": "={{ $json.message.voice.file_id }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -400,
+        160
+      ],
+      "id": "076d5892-0d3e-4146-af1a-96560b5b6eec",
+      "name": "Get a file",
+      "webhookId": "76e0a203-f6bb-483e-96dc-f29f98faaab7"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -240,
+        160
+      ],
+      "id": "6e899386-b300-48ef-9911-0931c545454d",
+      "name": "Transcribe a recording"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.message && $json.message.text ? $json.message.text : $json.text }}",
+        "options": {
+          "systemMessage": "You are a smart assistant specialised in generating professional invoices that comply with French legislation.\n\nYou can:\n- Compute amounts, VAT, and totals precisely with your built-in calculator.\n- Read a Google Sheet that contains the customer database.\n\nFIXED ISSUER INFORMATION (Stark Industries):\nThis data must ALWAYS be included exactly as below in the \"company\" section:\n\n\"company\": {\n  \"name\": \"Stark Industries\",\n  \"address\": \"1 avenue des Champs Elysées, 75001 Paris, France\",\n  \"phone\": \"+33 6 12 34 56 78\",\n  \"email\": \"contact@stark-industries.com\",\n  \"logo_url\": \"https://logos-world.net/wp-content/uploads/2023/08/Stark-Industries-Symbol.png\",\n  \"siret\": \"123 456 789 00012\",\n  \"vat_number\": \"FR12 345678901\",\n  \"rcs\": \"Paris B 123 456 789\",\n  \"capital\": \"1 000 000 €\",\n  \"bank_name\": \"BNP Paribas\",\n  \"iban\": \"FR76 3000 1000 0000 0000 0000 123\",\n  \"bic\": \"BNPAFRPP\"\n}\n\nGENERATION RULES:\n1. Fetch the customer details from the Google Sheet by the provided ID or name.\n2. The customer's \"vat_number\" field in the Google Sheet is their intra-community VAT number (not an IBAN).\n3. Compute correctly: total_excl_tax = quantity × unit_price, then vat_amount = total_excl_tax × (vat_rate / 100).\n4. Verify that the line totals sum to the summary totals.\n\nJSON STRUCTURE TO PRODUCE:\n\n{\n  \"company\": {\n    \"name\": \"Stark Industries\",\n    \"address\": \"1 avenue des Champs Elysées, 75001 Paris, France\",\n    \"contact\": \"contact@stark-industries.com • +33 6 12 34 56 78\",\n    \"logo_url\": \"https://logos-world.net/wp-content/uploads/2023/08/Stark-Industries-Symbol.png\",\n    \"siret\": \"123 456 789 00012\",\n    \"vat_number\": \"FR12 345678901\",\n    \"rcs\": \"Paris B 123 456 789\",\n    \"capital\": \"1 000 000 €\"\n  },\n  \"client\": {\n    \"name\": \"Customer name\",\n    \"address\": \"Full customer address\",\n    \"vat_number\": \"Customer intra-community VAT number\",\n    \"logo_url\": \"Customer logo URL\"\n  },\n  \"invoice\": {\n    \"number\": \"INV-YYYY-XXX\",\n    \"issue_date\": \"DD/MM/YYYY\",\n    \"due_date\": \"DD/MM/YYYY\",\n    \"payment_method\": \"Bank transfer\",\n    \"terms\": \"Payment within 30 days\"\n  },\n  \"items\": [\n    {\n      \"description\": \"Service or product description\",\n      \"quantity\": 1,\n      \"unit_price\": \"0,00 €\",\n      \"vat_rate\": 20,\n      \"total_excl_tax\": \"0,00 €\"\n    }\n  ],\n  \"summary\": {\n    \"total_excl_tax\": \"0,00 €\",\n    \"vat_amount\": \"0,00 €\",\n    \"total_incl_tax\": \"0,00 €\"\n  },\n  \"bank_info\": {\n    \"bank_name\": \"BNP Paribas\",\n    \"iban\": \"FR76 3000 1000 0000 0000 0000 123\",\n    \"bic\": \"BNPAFRPP\"\n  },\n  \"legal_mentions\": \"SIRET: 123 456 789 00012 • RCS Paris B 123 456 789 • Capital: 1 000 000 € • VAT FR12 345678901. Late payment will incur a penalty equal to three times the legal interest rate, plus a flat recovery fee of €40.\",\n  \"notes\": \"Thank you for your business.\"\n}\n\nSTRICT RULES:\n- Return ONLY the JSON, no explanatory text and no markdown fences.\n- Format amounts with a decimal comma and the € symbol (e.g. \"1 555,00 €\").\n- Format dates as DD/MM/YYYY.\n- If a piece of customer information is missing, ask for clarification before generating.\n- The bank details are STARK INDUSTRIES' (the issuer) — never the customer's."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4220c7c6-a2e4-46c1-a28f-bc578a381302",
+      "name": "AI Agent",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -48,
+        192
+      ],
+      "id": "d30f39c5-eb4e-41a2-8abc-9768b58f2cd7",
+      "name": "OpenAI Chat Model"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        96,
+        192
+      ],
+      "id": "fea66709-2f71-4a3b-8e11-4450ec90ad4b",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+      "typeVersion": 1,
+      "position": [
+        224,
+        192
+      ],
+      "id": "1523f9ca-911e-473c-a68f-aef1ea542f87",
+      "name": "Calculator"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1RSnyuJWiLspGjMjyQlX311ltExJz21M_2S73mJglVmQ",
+          "mode": "list",
+          "cachedResultName": "Contact de Facturation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1RSnyuJWiLspGjMjyQlX311ltExJz21M_2S73mJglVmQ/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Feuille 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1RSnyuJWiLspGjMjyQlX311ltExJz21M_2S73mJglVmQ/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.6,
+      "position": [
+        352,
+        192
+      ],
+      "id": "6fb28237-12ee-4bbf-9aaf-d0c57c2508ad",
+      "name": "Billing Contact Lookup"
+    },
+    {
+      "parameters": {
+        "resource": "pdf",
+        "pdfTemplateId": "3c077b2361e6983c",
+        "jsonParameters": true,
+        "propertiesJson": "={{ $json.output }}"
+      },
+      "type": "n8n-nodes-base.apiTemplateIo",
+      "typeVersion": 1,
+      "position": [
+        352,
+        0
+      ],
+      "id": "6e2550b4-0c45-44df-93c3-f3f579bec22d",
+      "name": "Create Invoice"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=The invoice is ready! You can download it here: {{ $json.download_url }}\nThank you for using our service.\nIf you need any help, please don't hesitate to ask.",
+        "messages": {
+          "messageValues": [
+            {
+              "message": "You are Jarvis, the virtual assistant of \"Stark Industries\". Your role is to write a brief, polite, and clear reply to a Telegram message in order to deliver a freshly generated invoice. The message must include the invoice download link. Always be courteous and professional."
+            }
+          ]
+        },
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        560,
+        0
+      ],
+      "id": "bd3fe3fd-df90-474b-895c-956d0eca6d40",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        512,
+        192
+      ],
+      "id": "844428e1-1b98-45bb-84e6-c914731a5b59",
+      "name": "OpenAI Chat Model1"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.text }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        912,
+        0
+      ],
+      "id": "f2f5a4ab-e791-4b0f-bb1f-34f74ded30e6",
+      "name": "Send Invoice Reply",
+      "webhookId": "aa750301-7a3a-45c2-9d26-803cdd79fa05"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get a file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get a file": {
+      "main": [
+        [
+          {
+            "node": "Transcribe a recording",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe a recording": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculator": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Billing Contact Lookup": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Create Invoice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Invoice": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Send Invoice Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "857f2544-aee4-4294-9bae-4ae3db7f711b",
+  "meta": {
+    "instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a"
+  },
+  "id": "ERL3sknHjArO96kIMPnPb",
+  "tags": []
+}

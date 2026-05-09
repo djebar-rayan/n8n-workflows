@@ -1,0 +1,294 @@
+{
+  "name": "Hotel Voice Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "6404fe0f-aa6a-4e5a-a71c-81a6fcb606af",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        112,
+        176
+      ],
+      "id": "e3a56ead-ce38-4a44-81fb-95b19a4b4db5",
+      "name": "Webhook: Receive User Request (ElevenLabs)",
+      "webhookId": "6404fe0f-aa6a-4e5a-a71c-81a6fcb606af"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1648,
+        176
+      ],
+      "id": "14456f4b-4761-4a93-8b75-6798d9254114",
+      "name": "Webhook: Return AI Response (ElevenLabs)"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=The call transcription :\n{{ $json.body.searchQuery }}",
+        "options": {
+          "systemMessage": "=# BACKEND AI AGENT - HOTEL LUNA PARISIENNE\n\n## OBJECTIVE\nYou are responsible for handling requests forwarded by the ElevenLabs voice agent for Hotel Luna Parisienne.\nYour mission has three possible objectives (in order of priority):\n\n1. **Answer from the knowledge base**: provide concise answers using the Supabase Vector Store \"Knowledgebase Lookup\" (one call max per request).\n\n2. **Check room availability**: verify time slots through Google Calendar.\n\n3. **Create the booking**: complete the reservation and send a confirmation.\n\nNever create a booking before availability has been confirmed.\nAll bookings are in Paris time (Europe/Paris).\n\n## AVAILABLE TOOLS\n\n**Knowledgebase Lookup** → Supabase Vector Store with full hotel information\n- One call per request maximum\n- For questions: hotel/services/rates/policies/location\n- If the information is missing: \"This information is not available in our knowledge base\"\n\n**Calendar: Check Availability** → True/false availability for given dates and room type\n- Multiple calls allowed to find alternatives if needed\n- Room types: Standard, Deluxe, Panoramic Suite, Presidential Suite\n\n**Calendar: Create Appointment** → Creates the booking in Google Calendar\n- Only one call per request (more than one = failure)\n- Generates a booking number: LUNA-2025-XXXXXX\n\n**Gmail: Send Confirmation** → Sends a confirmation email after a successful booking\n\n## LOGIC PER ACTION_TYPE\n\n### A. \"get_company_info\" - Hotel questions\n- Use `query_subject` to search via Knowledgebase Lookup\n- Reply in ≤3 short sentences with precise details\n- If not found: \"Information not available in our knowledge base\"\n- Never mention \"Supabase\" - say \"the hotel knowledge base\"\n\n### B. \"check_availability\" - Availability check\n- Extract `check_in_date`, `check_out_date`, `room_type` from the webhook\n- Call Calendar: Check Availability\n- If unavailable, look for 3 alternatives with multiple calls\n- Return availability + exact rate for the confirmed dates\n\n### C. \"make_reservation\" - Booking creation\n- First confirm with Calendar: Check Availability\n- If available, call Calendar: Create Appointment with:\n  - Dates: check_in_date to check_out_date (Paris)\n  - Guest: client_name, client_email, client_phone\n  - Room: room_type, adults, children\n  - Services: parking_needed, breakfast_included\n  - Special: special_requests\n- Then Gmail: Send Confirmation with all details\n\n### D. \"modify_reservation\" - Modification\n- Look up the existing reservation\n- Re-check availability if dates change\n- Update + send confirmation email\n\n## DATA RECEIVED FROM THE ELEVENLABS WEBHOOK\n\nAvailable parameters:\n- `action_type`: action type (required)\n- `query_subject`: hotel question topic\n- `check_in_date` / `check_out_date`: ISO dates\n- `room_type`: exact room type\n- `adults` / `children`: number of guests\n- `client_name` / `client_email` / `client_phone`: contact details\n- `parking_needed` / `breakfast_included`: services (boolean)\n- `special_requests`: special requests\n- `conversation_id`: ElevenLabs conversation ID\n- `user_message`: original guest message\n- `timestamp`: timestamp\n\n## HOTEL PRICING\n\n**Rooms:** Standard €120-180 | Deluxe €180-250 | Suite €300-450 | Presidential €650-950\n**Extras:** City tax +€2.30/person/night | Parking +€35/night | Breakfast +€18/€28\n\n## REQUIRED RESPONSE FORMAT\nAlways return a structured JSON payload to ElevenLabs:\n\n{\n  \"success\": true/false,\n  \"action_performed\": \"executed_action\",\n  \"message\": \"Clear response for the voice agent\",\n  \"data\": {\n    \"reservation_number\": \"LUNA-2025-XXXXX\",\n    \"room_type\": \"Deluxe\",\n    \"check_in\": \"15/09/2025\",\n    \"check_out\": \"17/09/2025\",\n    \"total_price\": 409.20,\n    \"available\": true/false\n  },\n  \"next_steps\": \"Suggestions for the next conversation step\",\n  \"conversation_id\": \"ID_received_from_webhook\"\n}\n\n## RESTRICTIONS\n- No booking if dates are unavailable\n- No booking without complete guest information\n- Only one Calendar: Create Appointment call per request\n- Only one Knowledgebase Lookup call per request\n- Validate that dates are in the future and logically ordered (check-out after check-in)\n\nGOAL: Efficient backend processing for a smooth booking experience over the ElevenLabs voice interface."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        816,
+        176
+      ],
+      "id": "b91d4180-5d31-4a5c-8e3c-72de7919b917",
+      "name": "AI Agent: Multilingual Vocal Support (GPT-5)"
+    },
+    {
+      "parameters": {
+        "description": "Use this tool to reason through Hotel Luna Parisienne booking requests. It will not retrieve new information or modify the database — it simply appends the reasoning to the log. Use it whenever complex reasoning or in-memory note-taking is needed to analyse the ElevenLabs webhook payload, plan tool usage (Google Calendar, Supabase, Gmail), and optimise the response strategy before executing booking actions."
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolThink",
+      "typeVersion": 1.1,
+      "position": [
+        512,
+        432
+      ],
+      "id": "a77b6f92-b029-4ecb-b529-5e697791b52d",
+      "name": "Reasoning Tool (LangChain)"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5-mini",
+          "mode": "list",
+          "cachedResultName": "gpt-5-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        384,
+        432
+      ],
+      "id": "b7fa09ce-20b9-4b23-9613-0c82fd72bd65",
+      "name": "OpenAI GPT-5 Model"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Calendar', ``, 'string') }}",
+          "mode": "id"
+        },
+        "returnAll": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Return_All', ``, 'boolean') }}",
+        "timeMin": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', ``, 'string') }}",
+        "timeMax": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        640,
+        512
+      ],
+      "id": "6f1ab042-19df-430c-8f43-709f672598b8",
+      "name": "Calendar: Check Availability"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Calendar', ``, 'string') }}",
+          "mode": "id"
+        },
+        "start": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Start', ``, 'string') }}",
+        "end": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('End', ``, 'string') }}",
+        "additionalFields": {
+          "description": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Description', ``, 'string') }}",
+          "summary": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Summary', ``, 'string') }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        800,
+        512
+      ],
+      "id": "5d75272e-fc80-4414-ab1b-1c37ec35fcc8",
+      "name": "Calendar: Create Appointment"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('To', ``, 'string') }}",
+        "subject": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Subject', ``, 'string') }}",
+        "message": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Message', ``, 'string') }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmailTool",
+      "typeVersion": 2.1,
+      "position": [
+        944,
+        432
+      ],
+      "id": "51632e72-1ca0-439a-83c8-b5a2ecfe59cc",
+      "name": "Gmail: Send Booking Confirmation",
+      "webhookId": "0119e6f6-8756-4f07-be3c-5f9a4308ef89"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        576
+      ],
+      "id": "32b01d6d-75b3-4fb4-a819-e7e8df9c99c4",
+      "name": "Embeddings OpenAI"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "HOTEL LUNA PARISIENNE KNOWLEDGE BASE\n\nUSAGE: Look up hotel information for action_type \"get_company_info\"\n\nSEARCH FOR:\n- Hotel services and amenities\n- Rates and policies (cancellation, check-in/out)\n- Location and access (transport, parking)\n- Dining and breakfast\n- Rooms and suites (descriptions, capacity)\n- Activities and attractions nearby",
+        "tableName": {
+          "__rl": true,
+          "value": "hotel_luna",
+          "mode": "list",
+          "cachedResultName": "hotel_luna"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        1104,
+        432
+      ],
+      "id": "35a41583-d8f3-4b5b-879d-2f65a07446cd",
+      "name": "Knowledgebase Lookup"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook: Receive User Request (ElevenLabs)": {
+      "main": [
+        [
+          {
+            "node": "AI Agent: Multilingual Vocal Support (GPT-5)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent: Multilingual Vocal Support (GPT-5)": {
+      "main": [
+        [
+          {
+            "node": "Webhook: Return AI Response (ElevenLabs)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reasoning Tool (LangChain)": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent: Multilingual Vocal Support (GPT-5)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI GPT-5 Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent: Multilingual Vocal Support (GPT-5)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calendar: Check Availability": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent: Multilingual Vocal Support (GPT-5)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calendar: Create Appointment": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent: Multilingual Vocal Support (GPT-5)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail: Send Booking Confirmation": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent: Multilingual Vocal Support (GPT-5)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Knowledgebase Lookup",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Knowledgebase Lookup": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent: Multilingual Vocal Support (GPT-5)",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "0ec158bf-5a3d-432e-843c-0a1c37ae46a9",
+  "meta": {
+    "instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a"
+  },
+  "id": "gGQZwkfkiva-GX-89I2R6",
+  "tags": []
+}

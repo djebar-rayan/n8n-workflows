@@ -1,0 +1,1519 @@
+{
+  "name": "Dropshipping Product Researcher",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Product to Scrape",
+        "formDescription": "Enter the product you want to scrape",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Product"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "a5aa0097-6f47-4653-82e1-3dd4c3ef8cf7",
+      "name": "On form submission",
+      "webhookId": "8c6b5700-d40d-463b-a2d8-174619fec95f"
+    },
+    {
+      "parameters": {
+        "resource": "Actors",
+        "operation": "Run actor and get dataset"
+      },
+      "type": "@apify/n8n-nodes-preview-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "dbe60938-f16f-4247-9b68-369f159227d0",
+      "name": "Run an Actor and get dataset",
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "jsCode": "// Initialise an empty buffer\nlet analyseTexte = \"Here is the list of products found on Amazon for analysis:\\n\\n\";\n\n// Walk through every product returned by Apify\nfor (const item of $input.all()) {\n  const p = item.json;\n  \n  // Append the product info to the buffer\n  analyseTexte += `📦 Product: ${p.productDescription}\\n`;\n  analyseTexte += `🔖 ASIN: ${p.asin}\\n`;\n  \n  // Handle the current price and the strikethrough price\n  analyseTexte += `💰 Current Price: ${p.price} €\\n`;\n  if (p.retailPrice && p.retailPrice > p.price) {\n      analyseTexte += `📉 Original Price: ${p.retailPrice} €\\n`;\n  }\n\n  analyseTexte += `⭐ Rating: ${p.productRating} (${p.countReview} reviews)\\n`;\n  analyseTexte += `📈 Recent Sales: ${p.salesVolume || \"Not specified\"}\\n`;\n  analyseTexte += `📢 Sponsored (Active Ads): ${p.sponsored ? \"Yes\" : \"No\"}\\n`;\n  analyseTexte += `🚀 Prime Shipping: ${p.prime ? \"Yes\" : \"No\"}\\n`;\n  analyseTexte += `🔗 Amazon Link: https://www.amazon.fr${p.dpUrl}\\n`;\n  analyseTexte += `🖼️ Image Link: ${p.imgUrl}\\n`; // Used by the downstream Google Sheets node\n  \n  analyseTexte += `-----------------------------------\\n`;\n}\n\n// Return the formatted buffer in a single field\nreturn [{ json: { texte_pour_ia: analyseTexte } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "aa7d64e0-f812-4e6d-be89-8fe59e3451f0",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are now going to analyse the raw product list below.\n\nApply your internal scoring criteria rigorously and select the 5 products with the strongest commercial potential for an immediate dropshipping launch.\n\n## REQUIRED RESPONSE FORMAT\n\nReturn EXACTLY a JSON array of 5 objects, each with this structure (the field names map to my dashboard columns):\n\n[\n  {\n    \"rank\": 1,\n    \"image\": \"Full URL of the product's main image\",\n    \"asin\": \"ASIN code\",\n    \"lien\": \"Full Amazon URL\",\n    \"ventes_recentes\": \"Verbatim sales information (e.g. 'Over 500 bought in the last month'). Use 'Unknown' if not provided\",\n    \"note_amazon\": 4.5,\n    \"nombre_avis\": 342,\n    \"prix_amazon\": 29.99,\n    \"score_interne\": 92,\n    \"titre_shopify\": \"Branded title, max 60 characters (e.g. 'Retro Pro X1 Controller')\",\n    \"niche\": \"Niche (e.g. Gaming, Home...)\",\n    \"prix_revente_conseille\": 59.99,\n    \"marge_estimee_percent\": 50,\n    \"raison_selection_winner\": \"Explain in 1 sentence WHY this is an absolute winner\",\n    \"avantage_principal\": \"Main strength to highlight\",\n    \"audience_cible\": \"Precise persona (age, interest, pain point)\",\n    \"hook_tiktok\": \"Hook for the first 3 seconds of the video\",\n    \"angle_facebook\": \"Problem/solution angle for FB Ads\",\n    \"objection_principale\": \"Biggest customer hesitation and how to counter it\",\n    \"description_courte\": \"2 persuasive sentences for the product page\",\n    \"mot_cle_tiktok\": \"Generate a short keyword (2 to 4 words max) based on the real Amazon title to look this product up on TikTok. Use the actual brand and model (e.g. 'EasySMX X05 controller' or '8BitDo Ultimate controller'). DO NOT use the made-up shopify title.\"\n  }\n]\n\n## RAW DATA TO ANALYSE\n\n{{ $json.texte_pour_ia }}",
+        "options": {
+          "systemMessage": "You are NEXUS, an AI specialised in e-commerce product research, trained on millions of sales data points from Shopify, Amazon, TikTok Ads, and Facebook Ads. You have helped dropshippers generate over €50 million in cumulative revenue by spotting \"Winners\" before market saturation.\n\n---\n\n## YOUR ONE OBJECTIVE\nAnalyse a raw extraction of Amazon products and select the absolute TOP 5 to launch as a PRIORITY on TikTok Ads and Facebook Ads within 48 hours.\n\n---\n\n## SELECTION CRITERIA — INTERNAL SCORE (mentally score each product)\n\n### ✅ CRITERION 1 — VALIDATED DEMAND (25 pts)\n- Product sponsored on Amazon = proof of profitable ad spend\n- High recent sales volume (favourable Best Seller Rank in its category)\n- More than 50 reviews and a rising trend\n- Penalty if the product is in decline or hyper-saturated\n\n### ✅ CRITERION 2 — VIDEO POTENTIAL & \"WOW\" EFFECT (25 pts)\n- The product must be SHOWABLE in a short video (< 15 seconds to convince)\n- Preference: visual effects (lights, transformations), problem-solving demos, before/after contrast\n- Bonus if the product triggers a strong emotional reaction (surprise, relief, desire)\n- Penalty for overly generic or non-visual products (cables, screws, technical parts)\n\n### ✅ CRITERION 3 — MARGIN & PERCEIVED VALUE (25 pts)\n- Target Shopify price: between €29 and €79 (optimal impulse-buy zone)\n- Minimum gross margin target: 60% (Shopify price at least 2.5× the Amazon/supplier price)\n- Bonus when perceived value is higher than actual price (a product that \"feels\" pricier)\n- Penalty if the Amazon price is already > €50 (margin hard to defend)\n\n### ✅ CRITERION 4 — QUALITY & MANAGEABLE SUPPORT (25 pts)\n- Target Amazon rating: ≥ 4.0 stars\n- Avoid products with recurring complaints in reviews (breakage, bad smell, wrong size)\n- Preference for mechanically simple products (less customer support load)\n- Bonus if the product is hard to find in big retailers (perceived exclusivity)\n\n---\n\n## REASONING RULES\n\n1. **Ignore** overly seasonal products if the season has passed.\n2. **Prioritise** evergreen niches with passionate communities (gaming, fitness, pets, beauty, home).\n3. **Eliminate** outright any product that is dangerous, an obvious counterfeit, or that requires medical certification.\n4. If two products end up tied, **favour** the one with the strongest UGC (User Generated Content) potential.\n\n---\n\n## ABSOLUTE TECHNICAL RULE — CRITICAL\nYou are a JSON API integrated into an n8n automation pipeline. Any answer that breaks the rules below will crash the system:\n- ❌ NO text before the JSON\n- ❌ NO text after the JSON\n- ❌ NO Markdown fences (no ```json, no ```)\n- ❌ NO comments inside the JSON (no // and no /* */)\n- ✅ Your reply MUST start directly with [ and end with ]\n- ✅ All numbers must be Number (not strings with €)\n- ✅ Every field must be present, even if the value is null"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "293a2b8f-a990-4fb5-9d1f-3345abaf3003",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.4",
+          "mode": "list",
+          "cachedResultName": "gpt-5.4"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        624,
+        144
+      ],
+      "id": "3bed261c-0639-4bc3-80c8-7db651eda789",
+      "name": "OpenAI Chat Model"
+    },
+    {
+      "parameters": {
+        "resource": "Actors",
+        "operation": "Run actor and get dataset"
+      },
+      "type": "@apify/n8n-nodes-preview-apify.apify",
+      "typeVersion": 1,
+      "position": [
+        240,
+        272
+      ],
+      "id": "894cb9f2-3596-4f66-84df-c8813795c9e2",
+      "name": "TikTok Scraper",
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Pick up the text generated by the AI (in the \"output\" field)\nconst reponseIA = $input.first().json.output;\n\n// 2. Parse that text into a real array we can manipulate\nconst produits = JSON.parse(reponseIA);\n\n// 3. Ask n8n to split the array into 5 separate items\n// (this creates 5 executions of the next Google Sheets node — one row each)\nreturn produits.map(produit => ({ json: produit }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        0
+      ],
+      "id": "91221722-21c7-40a9-9754-47deac8d45db",
+      "name": "Format Data"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Collect the TikTok results returned by Apify\nconst resultatsTikTok = $input.all().map(item => item.json);\n\n// 2. Get the Amazon product currently flowing through the loop (the \"Loop\" node)\nconst produit = $('Loop').first().json;\n\n// Stat counters\nlet totalVues = 0;\nlet totalLikes = 0;\nlet totalShares = 0;\nlet totalSaves = 0; // \"Saves\" = strong purchase-intent signal\nlet totalComments = 0;\nlet videosRecentes = 0;\nlet nbVideos = 0;\n\n// Trackers for the most viral video\nlet maxVues = 0;\nlet dateMaxVues = \"Unknown\";\n\n// Keep a few descriptions to give the AI marketing context\nlet topDescriptions = [];\n\n// Recency cut-off (60 days)\nconst dateLimite = new Date();\ndateLimite.setDate(dateLimite.getDate() - 60);\n\n// 3. Walk through each TikTok video found\nfor (const resultat of resultatsTikTok) {\n    if (resultat.aweme_info && resultat.aweme_info.statistics) {\n        nbVideos++;\n        const stats = resultat.aweme_info.statistics;\n        const video = resultat.aweme_info;\n        \n        // Pull the metrics\n        let vues = stats.play_count || 0;\n        let likes = stats.digg_count || 0;\n        let shares = stats.share_count || 0;\n        let saves = stats.collect_count || 0;\n        let comments = stats.comment_count || 0;\n\n        totalVues += vues;\n        totalLikes += likes;\n        totalShares += shares;\n        totalSaves += saves;\n        totalComments += comments;\n\n        // Inspect the publish date\n        let dateFormatee = \"Unknown\";\n        if (video.create_time) {\n            let dateVideo = new Date(video.create_time * 1000);\n            dateFormatee = dateVideo.toLocaleDateString('fr-FR');\n            \n            // Posted within the last 60 days?\n            if (dateVideo > dateLimite) {\n                videosRecentes++;\n            }\n        }\n\n        // Spot the video with the most views\n        if (vues > maxVues) {\n            maxVues = vues;\n            dateMaxVues = dateFormatee;\n        }\n\n        // Keep snippets from the first 3 descriptions\n        if (topDescriptions.length < 3 && video.desc) {\n            topDescriptions.push(video.desc.substring(0, 100) + \"...\");\n        }\n    }\n}\n\n// 4. Engagement rates (kept as proper Number values)\nlet tauxLikes = totalVues > 0 ? parseFloat(((totalLikes / totalVues) * 100).toFixed(2)) : 0;\nlet tauxSaves = totalVues > 0 ? parseFloat(((totalSaves / totalVues) * 100).toFixed(2)) : 0; \nlet tauxShares = totalVues > 0 ? parseFloat(((totalShares / totalVues) * 100).toFixed(2)) : 0; \n\n// 5. Build the final \"Product Dossier\" handed off to the AI Agent\nreturn [{\n    json: {\n        // Re-include all the Amazon and Shopify data from the start\n        ...produit, \n        \n        // Add the pre-digested TikTok analysis block\n        \"TikTok_Data\": {\n            \"Videos_Analysees\": nbVideos,\n            \"Videos_Postees_Moins_60j\": videosRecentes,\n            \n            \"Metriques_Globales\": {\n                \"Total_Vues\": totalVues,\n                \"Total_Likes\": totalLikes,\n                \"Total_Favoris\": totalSaves,\n                \"Total_Partages\": totalShares,\n                \"Total_Commentaires\": totalComments\n            },\n            \n            \"Taux_Engagement\": {\n                // Variables are already plain numbers at this point\n                \"Taux_Likes_Sur_Vues_pct\": tauxLikes,\n                \"Taux_Intentions_Achat_Favoris_pct\": tauxSaves,\n                \"Taux_Viralite_Partages_pct\": tauxShares\n            },\n            \n            \"Video_La_Plus_Virale\": {\n                \"Vues\": maxVues,\n                \"Date_Publication\": dateMaxVues\n            },\n            \n            \"Angles_Marketing_Concurrents\": topDescriptions\n        }\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        272
+      ],
+      "id": "de5b0dbd-2277-40cd-8344-69c0e4d6e763",
+      "name": "Detect True Winners"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Here is the product data to analyse:\n\n━━━ AMAZON DATA ━━━\nProduct: {{ $json.titre_shopify }}\nAmazon Price: {{ $json.prix_amazon }}€\nRating: {{ $json.note_amazon }}/5\nReview count: {{ $json.nombre_avis }}\nRecent sales: {{ $json.ventes_recentes }}\nNiche: {{ $json.niche }}\n\n━━━ TIKTOK DATA ━━━\nSearch keyword: {{ $json.mot_cle_tiktok }}\nVideos analysed: {{ $json.TikTok_Data.Videos_Analysees }}\nVideos posted < 60 days: {{ $json.TikTok_Data.Videos_Postees_Moins_60j }}\n\nGLOBAL METRICS:\n- Total Views: {{ $json.TikTok_Data.Metriques_Globales.Total_Vues }}\n- Total Likes: {{ $json.TikTok_Data.Metriques_Globales.Total_Likes }}\n- Total Saves: {{ $json.TikTok_Data.Metriques_Globales.Total_Favoris }}\n- Total Shares: {{ $json.TikTok_Data.Metriques_Globales.Total_Partages }}\n- Total Comments: {{ $json.TikTok_Data.Metriques_Globales.Total_Commentaires }}\n\nCALCULATED RATES:\n- Likes/Views Rate: {{ $json.TikTok_Data.Taux_Engagement.Taux_Likes_Sur_Vues_pct }}%\n- Purchase Intent Rate (Saves): {{ $json.TikTok_Data.Taux_Engagement.Taux_Intentions_Achat_Favoris_pct }}%\n- Virality Rate (Shares): {{ $json.TikTok_Data.Taux_Engagement.Taux_Viralite_Partages_pct }}%\n\nMost viral video: {{ $json.TikTok_Data.Video_La_Plus_Virale.Vues }} views — published on {{ $json.TikTok_Data.Video_La_Plus_Virale.Date_Publication }}\n\n━━━ VERDICT ━━━\nApply your rules, you MUST use your Google Sheets tool to update the data, then reply ONLY with the final JSON object containing \"winner\" and \"justification\".",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are Marcus, a Senior Dropshipping Expert with 8 years of experience and over 200\nproducts launched on TikTok Ads and Meta Ads. You have burned budget on fake winners\nAND missed real winners that you rejected too quickly. You learned that the numbers alone lie.\n\nYour method: read the data like a detective. Maths informs you,\nbut your expert judgement is what decides.\n\n---\n\nSTEP 1 — CHECK THAT THE DATA EXISTS (Technical disqualification)\nReject immediately if:\n- Total_Vues < 5,000 (not enough data to analyse)\n- Total_Favoris missing or = 0 AND Total_Likes = 0 (empty data, scraping failed)\n- Videos_Analysees = 0\n\nThese are TECHNICAL rejections, not qualitative ones. The product simply has no data —\nfull stop.\n\n---\n\nSTEP 2 — READ THE SIGNALS LIKE AN EXPERT\n\n🔍 SIGNAL 1: PURCHASE INTENT (the most important one)\nCompute: Save Rate = Total_Favoris / Total_Vues × 100\n\nInterpret it in context:\n- A gaming product at 0.2% with 200k views → 400 real saves → weak BUT real signal\n- A gadget at 2% with 20k views → 400 saves → same number, more concentrated trend\n- Don't reject on a fixed threshold. Ask yourself: \"Do these saves represent\n  real intent, or just noise?\"\n\nGuideline scale (not absolute):\n> 2% → Strong purchase signal\n0.5% to 2% → Moderate signal, look for confirmation elsewhere\n< 0.5% → Weak signal, the other signals must compensate\n\n🔍 SIGNAL 2: TREND VITALITY\nCompute: % recent videos = Videos_Postees_Moins_60j / Videos_Analysees × 100\n\n> 50% → Live trend ✅\n20% to 50% → Lukewarm trend, risky but not dead\n< 20% → Trend in decline ⚠️\n\nAlso look at the publish date of the most viral video. If it is less than 30 days old\nwith many views → the trend is exploding right now.\n\n🔍 SIGNAL 3: ENGAGEMENT QUALITY\nCompute: Engagement = (Likes + Comments + Shares) / Views × 100\n\n> 3% → The community is reacting actively\n1% to 3% → Normal engagement for TikTok\n< 1% → Passive — people watch without reacting\n\nAbove all: look at the Comments/Likes ratio.\nMany comments = curiosity, questions about price, where to buy → that is the\nbest purchase-intent signal there is.\n\n🔍 SIGNAL 4: AMAZON MARKET PROOF\nRating > 4.2 + more than 200 reviews + recent sales mentioned → the product already sells.\nTikTok merely confirms (or refutes) the existing demand.\n\n🔍 SIGNAL 5: WOW EFFECT AND NICHE\nAsk yourself: \"If I see this product while scrolling at 2 a.m., am I going to type\nthe price in the comments, or scroll past?\"\nA product that answers YES can offset average metrics.\n\n---\n\nSTEP 3 — CROSS THE SIGNALS AND DECIDE\n\nYou don't need a perfect score on everything. You're looking for a winning PATTERN:\n\n✅ TRUE WINNER PATTERN (at least 3 of 5):\n- Save Rate > 0.5% OR raw Saves > 300\n- More than 40% recent videos\n- Engagement > 1.5%\n- Solid Amazon proof (rating > 4.2, reviews > 200)\n\n⚠️ GREY ZONE → use expert judgement:\nA product can have a low Save Rate but a recently exploding trend.\nA product can have few views but 60% saves → very targeted micro-niche.\nIn the grey zone, ask: \"Would I put €50 of test budget on this?\"\nIf yes → true. If no → false.\n\n❌ FAKE WINNER PATTERN:\n- Save Rate < 0.3% AND Saves < 100 (truly nobody is saving it)\n- Zero recent videos under 60 days\n- All viral videos in non-European languages (no FR market)\n- One single video accounts for > 80% of total views (artificial)\n\n---\n\nREQUIRED OUTPUT FORMAT — JSON only, nothing before, nothing after:\n\n{\n  \"winner\": true or false,\n  \"justification\": \"2-3 sentences max. Cite the key numbers and the deciding signal. Example: Save Rate 0.8%, 9/15 recent videos (60%), engagement 1.55%. The trend is alive and Amazon confirms demand with 785 reviews at 4.5. Moderate but sufficient signal for a small-budget test.\"\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        640,
+        272
+      ],
+      "id": "84ed6120-9c6c-4536-8ce6-556a6a7520ae",
+      "name": "AI Agent1"
+    },
+    {
+      "parameters": {
+        "options": {
+          "reset": false
+        }
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        0,
+        256
+      ],
+      "id": "473c8cb7-41f7-4aef-8cf3-8ef43e621b8c",
+      "name": "Loop"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.4-2026-03-05",
+          "mode": "list",
+          "cachedResultName": "gpt-5.4-2026-03-05"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        624,
+        464
+      ],
+      "id": "69d3f653-b8fd-46bf-b744-bc0f74934f12",
+      "name": "OpenAI Chat Model1"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1oLCk9yToDdt0DIHJdbhCU92_EzykmEbiq7TGVN2auoM",
+          "mode": "list",
+          "cachedResultName": "Product Winners",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oLCk9yToDdt0DIHJdbhCU92_EzykmEbiq7TGVN2auoM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Winners",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oLCk9yToDdt0DIHJdbhCU92_EzykmEbiq7TGVN2auoM/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "asin": "={{ $json.asin }}",
+            "lien": "={{ $json.lien }}",
+            "ventes_recentes": "={{ $json.ventes_recentes }}",
+            "note_amazon": "={{ $json.note_amazon }}",
+            "nombre_avis": "={{ $json.nombre_avis }}",
+            "prix_amazon": "={{ $json.prix_amazon }}",
+            "score_interne": "={{ $json.score_interne }}",
+            "titre_shopify": "={{ $json.titre_shopify }}",
+            "niche": "={{ $json.niche }}",
+            "prix_revente_conseille": "={{ $json.prix_revente_conseille }}",
+            "marge_estimee_percent": "={{ $json.marge_estimee_percent }}",
+            "raison_selection_winner": "={{ $json.raison_selection_winner }}",
+            "avantage_principal": "={{ $json.avantage_principal }}",
+            "audience_cible": "={{ $json.audience_cible }}",
+            "hook_tiktok": "={{ $json.hook_tiktok }}",
+            "angle_facebook": "={{ $json.angle_facebook }}",
+            "objection_principale": "={{ $json.objection_principale }}",
+            "description_courte": "={{ $json.description_courte }}",
+            "mot_cle_tiktok": "={{ $json.mot_cle_tiktok }}",
+            "image": "={{ $json.image }}",
+            "rank": "={{ $json.rank }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "rank",
+              "displayName": "rank",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "image",
+              "displayName": "image",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "asin",
+              "displayName": "asin",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lien",
+              "displayName": "lien",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ventes_recentes",
+              "displayName": "ventes_recentes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "note_amazon",
+              "displayName": "note_amazon",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "nombre_avis",
+              "displayName": "nombre_avis",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "prix_amazon",
+              "displayName": "prix_amazon",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "score_interne",
+              "displayName": "score_interne",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "titre_shopify",
+              "displayName": "titre_shopify",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "niche",
+              "displayName": "niche",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "prix_revente_conseille",
+              "displayName": "prix_revente_conseille",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "marge_estimee_percent",
+              "displayName": "marge_estimee_percent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "raison_selection_winner",
+              "displayName": "raison_selection_winner",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "avantage_principal",
+              "displayName": "avantage_principal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "audience_cible",
+              "displayName": "audience_cible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hook_tiktok",
+              "displayName": "hook_tiktok",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "angle_facebook",
+              "displayName": "angle_facebook",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "objection_principale",
+              "displayName": "objection_principale",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "description_courte",
+              "displayName": "description_courte",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "mot_cle_tiktok",
+              "displayName": "mot_cle_tiktok",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Video Analysées",
+              "displayName": "Video Analysées",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "TikTok - Total Vues",
+              "displayName": "TikTok - Total Vues",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Tiktok - Total Likes",
+              "displayName": "Tiktok - Total Likes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Tiktok - Total Favories",
+              "displayName": "Tiktok - Total Favories",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Tiktok - Total Partages",
+              "displayName": "Tiktok - Total Partages",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Tiktok - Total Commentaires",
+              "displayName": "Tiktok - Total Commentaires",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "TikTok - Vidéos Récentes (<60j)",
+              "displayName": "TikTok - Vidéos Récentes (<60j)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "TikTok - Taux d'Intention d'Achat (%)",
+              "displayName": "TikTok - Taux d'Intention d'Achat (%)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "TikTok - Vues de la Top Vidéo",
+              "displayName": "TikTok - Vues de la Top Vidéo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "TikTok - Date Top Vidéo",
+              "displayName": "TikTok - Date Top Vidéo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Verdict",
+              "displayName": "Verdict",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Justification",
+              "displayName": "Justification",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1168,
+        0
+      ],
+      "id": "c826cd13-f53d-4109-87a3-ea6716897aa2",
+      "name": "Append Amazon Products"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1oLCk9yToDdt0DIHJdbhCU92_EzykmEbiq7TGVN2auoM",
+          "mode": "list",
+          "cachedResultName": "Product Winners",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oLCk9yToDdt0DIHJdbhCU92_EzykmEbiq7TGVN2auoM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Winners",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oLCk9yToDdt0DIHJdbhCU92_EzykmEbiq7TGVN2auoM/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "asin": "={{ $('Detect True Winners').first().json.asin }}",
+            "TikTok - Total Vues": "={{ $('Detect True Winners').first().json.TikTok_Data.Metriques_Globales.Total_Vues }}",
+            "Tiktok - Total Likes": "={{ $('Detect True Winners').item.json.TikTok_Data.Metriques_Globales.Total_Likes }}",
+            "Tiktok - Total Favories": "={{ $('Detect True Winners').first().json.TikTok_Data.Metriques_Globales.Total_Favoris }}",
+            "Tiktok - Total Partages": "={{ $('Detect True Winners').item.json.TikTok_Data.Metriques_Globales.Total_Partages }}",
+            "Tiktok - Total Commentaires": "={{ $('Detect True Winners').first().json.TikTok_Data.Metriques_Globales.Total_Commentaires }}",
+            "TikTok - Vues de la Top Vidéo": "={{ $('Detect True Winners').item.json.TikTok_Data.Video_La_Plus_Virale.Vues }}",
+            "TikTok - Date Top Vidéo": "={{ $('Detect True Winners').first().json.TikTok_Data.Video_La_Plus_Virale.Date_Publication }}",
+            "TikTok - Vidéos Récentes (<60j)": "={{ $('Detect True Winners').item.json.TikTok_Data.Videos_Postees_Moins_60j }}",
+            "TikTok - Taux d'Intention d'Achat (%)": "={{ $('Detect True Winners').first().json.TikTok_Data.Taux_Engagement.Taux_Intentions_Achat_Favoris_pct }}",
+            "mot_cle_tiktok": "={{ $('Detect True Winners').first().json.mot_cle_tiktok }}",
+            "Video Analysées": "={{ $('Detect True Winners').item.json.TikTok_Data.Videos_Analysees }}"
+          },
+          "matchingColumns": [
+            "asin"
+          ],
+          "schema": [
+            {
+              "id": "rank",
+              "displayName": "rank",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "image",
+              "displayName": "image",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "asin",
+              "displayName": "asin",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "lien",
+              "displayName": "lien",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "ventes_recentes",
+              "displayName": "ventes_recentes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "note_amazon",
+              "displayName": "note_amazon",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "nombre_avis",
+              "displayName": "nombre_avis",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "prix_amazon",
+              "displayName": "prix_amazon",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "score_interne",
+              "displayName": "score_interne",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "titre_shopify",
+              "displayName": "titre_shopify",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "niche",
+              "displayName": "niche",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "prix_revente_conseille",
+              "displayName": "prix_revente_conseille",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "marge_estimee_percent",
+              "displayName": "marge_estimee_percent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "raison_selection_winner",
+              "displayName": "raison_selection_winner",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "avantage_principal",
+              "displayName": "avantage_principal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "audience_cible",
+              "displayName": "audience_cible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "hook_tiktok",
+              "displayName": "hook_tiktok",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "angle_facebook",
+              "displayName": "angle_facebook",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "objection_principale",
+              "displayName": "objection_principale",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "description_courte",
+              "displayName": "description_courte",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "mot_cle_tiktok",
+              "displayName": "mot_cle_tiktok",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Video Analysées",
+              "displayName": "Video Analysées",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "TikTok - Total Vues",
+              "displayName": "TikTok - Total Vues",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tiktok - Total Likes",
+              "displayName": "Tiktok - Total Likes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tiktok - Total Favories",
+              "displayName": "Tiktok - Total Favories",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tiktok - Total Partages",
+              "displayName": "Tiktok - Total Partages",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Tiktok - Total Commentaires",
+              "displayName": "Tiktok - Total Commentaires",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "TikTok - Vidéos Récentes (<60j)",
+              "displayName": "TikTok - Vidéos Récentes (<60j)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "TikTok - Taux d'Intention d'Achat (%)",
+              "displayName": "TikTok - Taux d'Intention d'Achat (%)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "TikTok - Vues de la Top Vidéo",
+              "displayName": "TikTok - Vues de la Top Vidéo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "TikTok - Date Top Vidéo",
+              "displayName": "TikTok - Date Top Vidéo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Verdict",
+              "displayName": "Verdict",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Justification",
+              "displayName": "Justification",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        800,
+        464
+      ],
+      "id": "31a7f021-591f-41e3-a282-9cf2a5349e10",
+      "name": "Update row in sheet in Google Sheets"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t\"winner\": \"x\",\n    \"justification\": \"y\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        960,
+        464
+      ],
+      "id": "8f33986d-2d80-47b9-8218-bf693b0de089",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1oLCk9yToDdt0DIHJdbhCU92_EzykmEbiq7TGVN2auoM",
+          "mode": "list",
+          "cachedResultName": "Product Winners",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oLCk9yToDdt0DIHJdbhCU92_EzykmEbiq7TGVN2auoM/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Winners",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1oLCk9yToDdt0DIHJdbhCU92_EzykmEbiq7TGVN2auoM/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Justification": "={{ $json.output.justification }}",
+            "asin": "={{ $('Detect True Winners').item.json.asin }}",
+            "Verdict": "={{ $json.output.winner }}"
+          },
+          "matchingColumns": [
+            "asin"
+          ],
+          "schema": [
+            {
+              "id": "rank",
+              "displayName": "rank",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "image",
+              "displayName": "image",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "asin",
+              "displayName": "asin",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "lien",
+              "displayName": "lien",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "ventes_recentes",
+              "displayName": "ventes_recentes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "note_amazon",
+              "displayName": "note_amazon",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "nombre_avis",
+              "displayName": "nombre_avis",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "prix_amazon",
+              "displayName": "prix_amazon",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "score_interne",
+              "displayName": "score_interne",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "titre_shopify",
+              "displayName": "titre_shopify",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "niche",
+              "displayName": "niche",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "prix_revente_conseille",
+              "displayName": "prix_revente_conseille",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "marge_estimee_percent",
+              "displayName": "marge_estimee_percent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "raison_selection_winner",
+              "displayName": "raison_selection_winner",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "avantage_principal",
+              "displayName": "avantage_principal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "audience_cible",
+              "displayName": "audience_cible",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "hook_tiktok",
+              "displayName": "hook_tiktok",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "angle_facebook",
+              "displayName": "angle_facebook",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "objection_principale",
+              "displayName": "objection_principale",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "description_courte",
+              "displayName": "description_courte",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "mot_cle_tiktok",
+              "displayName": "mot_cle_tiktok",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Video Analysées",
+              "displayName": "Video Analysées",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "TikTok - Total Vues",
+              "displayName": "TikTok - Total Vues",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Tiktok - Total Likes",
+              "displayName": "Tiktok - Total Likes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Tiktok - Total Favories",
+              "displayName": "Tiktok - Total Favories",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Tiktok - Total Partages",
+              "displayName": "Tiktok - Total Partages",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Tiktok - Total Commentaires",
+              "displayName": "Tiktok - Total Commentaires",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "TikTok - Vidéos Récentes (<60j)",
+              "displayName": "TikTok - Vidéos Récentes (<60j)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "TikTok - Taux d'Intention d'Achat (%)",
+              "displayName": "TikTok - Taux d'Intention d'Achat (%)",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "TikTok - Vues de la Top Vidéo",
+              "displayName": "TikTok - Vues de la Top Vidéo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "TikTok - Date Top Vidéo",
+              "displayName": "TikTok - Date Top Vidéo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "Verdict",
+              "displayName": "Verdict",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Justification",
+              "displayName": "Justification",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        976,
+        272
+      ],
+      "id": "e0b900ad-5b75-4eae-ab20-327adf2a0933",
+      "name": "Update row in sheet"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Run an Actor and get dataset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run an Actor and get dataset": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Format Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TikTok Scraper": {
+      "main": [
+        [
+          {
+            "node": "Detect True Winners",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Data": {
+      "main": [
+        [
+          {
+            "node": "Append Amazon Products",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect True Winners": {
+      "main": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent1": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop": {
+      "main": [
+        [],
+        [
+          {
+            "node": "TikTok Scraper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Amazon Products": {
+      "main": [
+        [
+          {
+            "node": "Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent1",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "3cc0c1d1-f182-4a05-b015-a0aaeeb708ec",
+  "meta": {
+    "instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a"
+  },
+  "id": "BuCI0smG7qeG7zoofeE-k",
+  "tags": []
+}

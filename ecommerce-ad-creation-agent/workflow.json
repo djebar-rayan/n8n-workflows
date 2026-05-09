@@ -1,0 +1,443 @@
+{
+  "name": "E-commerce Ad Creation Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "E-commerce Ad Creation",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Description",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Image",
+              "fieldType": "file",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Create",
+              "fieldType": "radio",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Image"
+                  },
+                  {
+                    "option": "Video"
+                  }
+                ]
+              },
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        -800,
+        208
+      ],
+      "id": "c09942e5-9a79-4fde-88e9-69d97638ef34",
+      "name": "On form submission",
+      "webhookId": "b5852305-3a09-4a94-bb0c-16f34639d150"
+    },
+    {
+      "parameters": {
+        "inputDataFieldName": "Image",
+        "name": "Image",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1Z78qRxcM3TmXBCJUXwr-jvHm84yuY_3B",
+          "mode": "list",
+          "cachedResultName": "N8N",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1Z78qRxcM3TmXBCJUXwr-jvHm84yuY_3B"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -624,
+        208
+      ],
+      "id": "167e29e7-9d91-4e2f-b2c9-9d2ca9572362",
+      "name": "Upload file"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "text": "Analyze the given image of a product. \n\nReturn ONLY raw YAML code. No markdown formatting, no code blocks, no backticks, no explanations.\n\nUse exactly this format:\nbrand_name: [Brand name if visible, otherwise \"Unknown\"]\ncolor_scheme:\n  - hex: \"[Hex code]\"\n    name: [Color name]\n  - hex: \"[Hex code]\"\n    name: [Color name]\n  - hex: \"[Hex code]\"\n    name: [Color name]\nfont_style: [Typography description if any: serif/sans-serif, weight, case]\nvisual_description: [Provide an EXHAUSTIVE, hyper-detailed physical description of the product. Describe its exact 3D shape, geometry, proportions, specific materials (e.g., brushed metal, frosted glass, glossy plastic), textures, surface finishes, lighting interactions (transparency, reflections), and every micro-component (caps, nozzles, buttons, edges, seams). CRUCIAL: Explicitly describe the exact placement, orientation (e.g., vertical, horizontal, curved), and letter spacing of any printed brand name or logo on the product packaging. Detail it as if instructing a 3D artist to build a flawless 1:1 exact replica, entirely ignoring the background.]",
+        "imageUrls": "={{ $json.webContentLink }}",
+        "options": {
+          "maxTokens": 1000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        -448,
+        208
+      ],
+      "id": "69bf4bd1-26df-41b9-be74-f7e712149bec",
+      "name": "Analyze image"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are ready to craft the prompt for Nano Banana Pro.\nHere is the information to build the ad:\n\nUSER MARKETING INTENT:\n{{ $('On form submission').item.json.Description }}\n\nPRODUCT PHYSICAL ANALYSIS (YAML):\n{{ $('Analyze image').item.json['0'].content[0].text }}\n\nWrite the textual prompt in English, follow the JSON format, describe the product with very high physical precision, and make sure the textual hook matches the user intent.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "# ROLE\nArt Director and Prompt-Engineering expert for the \"Nano Banana Pro\" image-generation model.\n\n# CONTEXT\nYou receive YAML data from a product photo analysis (brand name, colours, typography) plus the user's marketing intent.\n\n\n# REQUIRED OUTPUT FORMAT\nReturn ONLY a valid JSON object, nothing else:\n{\n  \"image_prompt\": \"[Your ultra-detailed prompt in English, max 150 words]\"\n}\n\n# PROMPT STRUCTURE TO PRODUCE FOR NANO BANANA\nYour prompt (\"image_prompt\") must be written in ENGLISH and follow this exact structure:\n\"Commercial ad poster for [Brand Name]. Visual: [Highly detailed physical description of the product based strictly on the YAML] placed beautifully in the center. [Subject/Action highlighted based on user intent]. Text overlay: '[Short catchy hook]' in [font style] typography. Setting & Background: [Professional setting]. Lighting & Style: Studio lighting, macro details, 4k resolution, highly polished commercial photography. Color Palette: [Insert Hex codes from YAML]. Layout: 4:5 aspect ratio, negative space for text.\"\n\n# CRITICAL RULES FOR NANO BANANA\n- Spotlight: the product is the star. Describe its materials and shape with extreme precision using the YAML data.\n- Text rendering (critical): include a short hook between single quotes (e.g. Text overlay: 'GLOW ALL DAY').\n- Advertising aesthetic: use keywords such as \"studio photography\", \"commercial ad\", \"crisp focus\", \"dramatic lighting\".\n- Brand fidelity: integrate the exact colours from the YAML."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "486ff824-3b26-45b8-8791-3f49e95d54bb",
+      "name": "AI Agent : Prompt Image"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        224
+      ],
+      "id": "1705d7ba-818b-4aec-88ea-79359f453eef",
+      "name": "ChatGPT Image Prompt"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t\"image_prompt\": \"string\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        144,
+        224
+      ],
+      "id": "037af666-e2d9-40bb-82a3-500acefdd0dd",
+      "name": "Structured Output Parser Image"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-3-pro-image-preview",
+          "mode": "list",
+          "cachedResultName": "models/gemini-3-pro-image-preview (Nano Banana Pro)"
+        },
+        "prompt": "={{ $json.output.image_prompt }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        320,
+        0
+      ],
+      "id": "c22f7455-ce9f-4272-889e-aa333dd35c7c",
+      "name": "Generate an image"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('On form submission').item.json['Create'] }}",
+                    "rightValue": "=Image",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "0e378ad7-bdae-4ccb-96cc-c02ab1b4a75d"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Image"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "e12353ad-8988-4a96-b803-827302cb2953",
+                    "leftValue": "={{ $('On form submission').item.json['Create'] }}",
+                    "rightValue": "Video",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Video"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -272,
+        208
+      ],
+      "id": "f4fd9036-cd71-488d-9f82-6366d2281246",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "modelId": {
+          "__rl": true,
+          "value": "models/veo-3.1-fast-generate-preview",
+          "mode": "list",
+          "cachedResultName": "models/veo-3.1-fast-generate-preview"
+        },
+        "prompt": "={{ $json.output.video_prompt }}",
+        "options": {
+          "durationSeconds": 8,
+          "aspectRatio": "9:16"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        320,
+        416
+      ],
+      "id": "0432dcbb-e8f8-4e7e-a3b8-007494e2b552",
+      "name": "Generate a video"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Create a UGC-style video prompt from the reference image and user description.\n\nUser description (may be empty):\n{{ $('On form submission').item.json['Description'] }}\n\nReference image analysis (use to stay faithful to what's visible):\n{{ $('Analyze image').item.json['0'].content[0].text }}\n\nRules:\n- Keep the look casual and realistic; avoid studio language.\n- Return ONLY a JSON object with \"video_prompt\" key, nothing else.",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "# ROLE\nArt Director specialised in short-form video for the Veo 3.1 Fast model.\n\n# GENERATION STRATEGY (CRUCIAL)\nTo avoid visual hallucinations (duplicate objects, blurred text), simplify the visual description in favour of motion coherence.\n\n# GOLDEN RULES\n1. LANGUAGE: Always English.\n2. SUBJECT: A young woman in her twenties.\n3. NO TEXT RULE: Never mention any brand, logo, or letters. Describe the product as \"smooth and blank\".\n4. SINGULARITY: The subject holds ONE single object. No separate pieces at the start.\n\n# TIME-CODED STRUCTURE (8 SECONDS)\nYou MUST use this tag format to stabilise the action:\n- [0-2s: setup]: focus on the CLOSED product in the hand.\n- [2-6s: demo + speech]: action of unscrewing and applying. Include a short line in quotes (max 12 words).\n- [6-8s: reaction]: final result and a smile to camera.\n\n# OUTPUT FORMAT (JSON ONLY)\n{\"video_prompt\": \"Prompt content here\"}\n\n# EXAMPLE OF A GENERATED PROMPT\n{\n  \"video_prompt\": \"young woman in her twenties; [0-2s: she holds up ONE closed hexagonal lip gloss tube with a blank polished glass body and a metallic pink cap toward the camera]; [2-6s: she slowly twists off the cap and glides the applicator across her lips while saying 'This is the most hydrating gloss' (6 words)]; [6-8s: she smiles warmly at the camera, showcasing her glossy lips]; setting: bright bedroom with natural sunlight; camera: stable handheld framing, authentic phone-video vibe; product: smooth surfaces, no text, shimmering peach liquid.\"\n}"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        16,
+        416
+      ],
+      "id": "9136ea99-cd2f-419c-9852-663c6c1ba0e7",
+      "name": "AI Agent : Prompt Video"
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n\t\"video_prompt\": \"string\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        160,
+        624
+      ],
+      "id": "518961b5-880a-4a26-9d03-50c6e5df3344",
+      "name": "Structured Output Parser Video"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "gpt-5.2-chat-latest",
+          "mode": "list",
+          "cachedResultName": "gpt-5.2-chat-latest"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        16,
+        624
+      ],
+      "id": "139b342e-8eb2-46fd-9b34-7cc9ce9ad522",
+      "name": "OpenAI Chat Model"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Upload file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload file": {
+      "main": [
+        [
+          {
+            "node": "Analyze image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ChatGPT Image Prompt": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent : Prompt Image",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser Image": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent : Prompt Image",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze image": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent : Prompt Image": {
+      "main": [
+        [
+          {
+            "node": "Generate an image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "AI Agent : Prompt Image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "AI Agent : Prompt Video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser Video": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent : Prompt Video",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent : Prompt Video",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent : Prompt Video": {
+      "main": [
+        [
+          {
+            "node": "Generate a video",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "143b3a05-9b78-48d2-81db-91a74a0f7cbd",
+  "meta": {
+    "instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a"
+  },
+  "id": "PAj7FI-687zlYS0pq8LBB",
+  "tags": []
+}

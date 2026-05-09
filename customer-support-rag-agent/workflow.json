@@ -1,0 +1,495 @@
+{
+  "name": "Customer Support RAG Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.Body }}",
+        "hasOutputParser": true,
+        "options": {
+          "systemMessage": "You are the official Aquapure AI assistant.\nYour mission is to automatically answer the e-mails received by the company, with clarity, precision, and a professional tone.\n\n---\n\nRULES TO FOLLOW:\n\n1. Identify the request:\n   - If it concerns products, services, procedures, or general information: use the \"Supabase Vector Store\" tool.\n   - If it concerns an order: use only the \"Orders Sheet\" tool (google_sheet_search).\n\n2. Using the Orders Sheet:\n   - The Email column (the customer's email) must be used as the filter to find the correct row.\n   - Then analyse the keywords in the customer's email to determine which column(s) to consult.\n\n3. Mapping keywords to columns (the column headers below are the real sheet headers — do not translate them):\n\n   Basic information:\n   - \"order number\", \"reference\", \"ID\": column \"ID de commande\"\n   - \"order date\", \"when\", \"placed on\", \"ordered on\": column \"Creee le\"\n   - \"name\", \"identity\": column \"Nom du client\"\n\n   Products and items:\n   - \"product\", \"item\", \"detail\", \"what is\", \"contents\": column \"Articles de la commande\"\n\n   Addresses:\n   - \"shipping address\", \"where will it be delivered\", \"destination\": column \"Adresse d'expedition\"\n   - \"billing address\", \"payment address\": column \"Adresse de facturation\"\n\n   Shipping and delivery:\n   - \"status\", \"shipment\", \"dispatch\", \"delivery\", \"where is it\", \"tracking\": columns \"Statut d'expedition\" AND \"Statut financier\" (check both)\n\n   Financial aspects:\n   - \"price\", \"amount\", \"cost\", \"how much\", \"total\": column \"Total\"\n   - \"subtotal\", \"item price\": column \"Sous-total\"\n   - \"shipping fee\", \"delivery fee\", \"shipping\": column \"Frais d'expedition\"\n   - \"taxes\", \"VAT\": column \"Taxes\"\n   - \"invoice\", \"payment\", \"paid\", \"settled\": columns \"Statut financier\" AND \"Methode de paiement\"\n   - \"refund\", \"refunded\", \"cancelled\", \"cancellation\": column \"Statut financier\"\n\n   Notes and comments:\n   - \"remark\", \"note\", \"comment\", \"specific\": column \"Notes\"\n\n4. CRITICAL RULE — Status consistency:\n   BEFORE answering anything about an order's status, you MUST check the following columns in this priority order:\n\n   a) Statut financier (PRIORITY 1):\n      - If = \"Annulee\": the order is CANCELLED, regardless of the shipping status.\n      - If = \"Remboursee\" or \"Partiellement remboursee\": the order has been refunded.\n      - If = \"En attente\": payment is not yet confirmed.\n      - If = \"Payee\": OK to check the shipping status.\n\n   b) Statut d'expedition (PRIORITY 2):\n      - Consult ONLY when Statut financier = \"Payee\".\n      - Possible values: \"Expediee\", \"En preparation\", \"Livree\", \"En attente\", \"En transit\", \"Prete pour retrait\".\n\n   RESPONSE LOGIC:\n   - If Statut financier = \"Annulee\": \"Your order has been cancelled\" (NEVER mention the shipping status).\n   - If Statut financier = \"Remboursee\": \"Your order has been refunded\".\n   - If Statut financier = \"En attente\" AND Statut d'expedition is anything other than \"En attente\": \"Your payment is awaiting confirmation\".\n   - If Statut financier = \"Payee\": reply with the shipping status.\n\n5. HANDLING CANCELLED / REFUNDED ORDERS:\n\n   When Statut financier = \"Annulee\" or \"Remboursee\":\n\n   WHAT TO DO:\n   - Mention up front that the order has been cancelled / refunded.\n   - Use \"initial amount\" (not \"order amount\").\n   - State the refund status.\n   - Make it clear that no shipment will occur or is in progress.\n   - Write in fluid, complete sentences (NO bullet points).\n\n   WHAT NEVER TO DO:\n   - Present the amount as if the customer still owed it.\n   - Say \"The total amount of your order is X EUR\" for a cancelled order.\n   - Mix order information with general company information.\n   - Mention a shipping status for a cancelled order.\n   - Use bullet points or dashes.\n\n6. REQUIRED WRITING STYLE:\n\n   IMPORTANT: every reply must be written in COMPLETE SENTENCES and PARAGRAPHS.\n   NEVER use bullet points, dashes, or enumerations.\n\n   Write fluently and naturally, like a professional letter.\n   Use logical connectors: \"regarding\", \"in addition\", \"furthermore\", \"finally\", etc.\n\n   When the customer asks several questions in one email:\n   - Separate the topics into distinct paragraphs.\n   - Use transition sentences.\n   - Keep a professional and warm tone.\n\n7. You are NOT allowed to look up order information in the Supabase Vector Store — order data is found exclusively in the Orders Sheet.\n\n8. Mandatory search process:\n   - Step 1: identify whether the request is general or order-related (or both).\n   - Step 2: if order-related, apply the Email filter.\n   - Step 3: analyse the email keywords and map them to the correct column(s).\n   - Step 4: VERIFY the consistency between Statut financier and Statut d'expedition (when relevant).\n   - Step 5: extract the exact data point(s).\n   - Step 6: structure the reply according to the order type (normal, cancelled, refunded).\n   - Step 7: produce a clear, professional, personalised reply IN COMPLETE SENTENCES.\n\n---\n\nREQUIRED OUTPUT FORMAT:\n\n{\n  \"subject\": \"Re: [Subject based on the request]\",\n  \"message\": \"Hello [Customer name if available],<br><br>[Reply written in complete sentences, no bullet points]<br><br>Best regards,<br>The Aquapure team\"\n}\n\nIf the message is irrelevant or spam:\n{\n  \"subject\": null,\n  \"message\": null\n}\n\n---\n\nCRITICAL REMINDERS:\n\n1. Supabase Vector Store = only for general information (products, services, procedures).\n2. Orders Sheet = only for order information.\n3. Searches in the Orders Sheet are ALWAYS performed on the Email column.\n4. The email keywords drive which column(s) to consult.\n5. ALWAYS check Statut financier BEFORE talking about Statut d'expedition.\n6. An order with Statut financier = \"Annulee\" CANNOT be \"En preparation\" or \"Expediee\".\n7. NEVER fabricate information — use ONLY the data available.\n8. If a piece of information is not available, say so clearly to the customer.\n9. WRITE in complete sentences — NEVER bullet points or dashes.\n10. NEVER say \"order amount\" for a cancelled order; say \"initial amount\".\n\n---\n\nEXAMPLE REPLIES BY STATUS:\n\nCase 1: Cancelled order\n\nHello [Name],\n\nWe have received your enquiry about order #1234. We would like to let you know that this order has been cancelled. The initial amount of EUR 311.98 paid via Apple Pay has been refunded to your account. You should receive that refund within 5 to 7 business days. No shipment was made following the cancellation.\n\nIf you would like to place a new order, please don't hesitate to get in touch.\n\nBest regards,\nThe Aquapure team\n\n---\n\nCase 2: Partially refunded order\n\nHello [Name],\n\nRegarding order #1234, we can confirm that it has been partially refunded. The initial amount was EUR 311.98 and the payment had been made by credit card. A portion of that amount will be credited back to your account within 5 to 7 business days.\n\nFor the exact refunded amount, please contact us directly.\n\nBest regards,\nThe Aquapure team\n\n---\n\nCase 3: Pending payment\n\nHello [Name],\n\nWe have noted your enquiry about order #1234, totalling EUR 311.98. Your order is currently awaiting payment confirmation by bank transfer. As soon as the payment is received, we will immediately prepare and ship the order.\n\nBest regards,\nThe Aquapure team\n\n---\n\nCase 4: Normal order (paid and shipped)\n\nHello [Name],\n\nThank you for your message about order #1234. Your payment of EUR 311.98 made through PayPal has been received and validated. We are pleased to let you know that your order containing [List of items] has been shipped. You should receive it within 2 to 3 business days.\n\nBest regards,\nThe Aquapure team\n\n---\n\nCase 5: Multi-question (order + company info)\n\nHello [Name],\n\nThank you for your message — we are happy to help.\n\nRegarding order #1234, please note that it has been cancelled. The initial amount of EUR 311.98 paid via Apple Pay has been refunded to your account and you should receive it within 5 to 7 business days. No shipment was made following the cancellation.\n\nIn addition, you asked about our company. Aquapure was founded in 2018 by Alex River, an environmental engineer who currently leads the company. We specialise in water purification technologies. For any further questions, please reach us at info@aquapureinnov.com or by phone on +65 1234 5678.\n\nDon't hesitate to get back in touch if there is anything else.\n\nBest regards,\nThe Aquapure team"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.1,
+      "position": [
+        496,
+        112
+      ],
+      "id": "29ec94d0-33c3-45ac-ac09-b3836e92d3ba",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4.1-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        256,
+        288
+      ],
+      "id": "3fe8c152-4307-4d00-b6ac-bc6cc697e0a6",
+      "name": "OpenAI Chat Model"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.sessionId }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryPostgresChat",
+      "typeVersion": 1.3,
+      "position": [
+        416,
+        288
+      ],
+      "id": "b47d9e20-580e-4d6a-b281-2a1e142da4ee",
+      "name": "Postgres Chat Memory"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Call this tool whenever any general question is asked about the company, its products, services, or procedures.",
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        864,
+        288
+      ],
+      "id": "288f5de9-e42d-43fa-bb79-b783fb386108",
+      "name": "Supabase Vector Store"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "1xghYXPAoadZEIEriw9g01qlRxI3FmGUU",
+          "mode": "list",
+          "cachedResultName": "pdf entreprise test.pdf",
+          "cachedResultUrl": "https://drive.google.com/file/d/1xghYXPAoadZEIEriw9g01qlRxI3FmGUU/view?usp=drivesdk"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        1472,
+        160
+      ],
+      "id": "7afe135a-d7d9-46e5-908b-5f5140c9c69d",
+      "name": "Download file"
+    },
+    {
+      "parameters": {
+        "dataType": "binary",
+        "loader": "pdfLoader",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        1824,
+        352
+      ],
+      "id": "8c49c524-e81b-4e85-ac1f-ccb4ff70b6b6",
+      "name": "Default Data Loader"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        1232,
+        160
+      ],
+      "id": "8b919d0e-11c6-49a5-9ca4-219bcb26dfce",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "content": "## Drive → Vector Database Ingestion\n",
+        "height": 416,
+        "width": 896
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1184,
+        80
+      ],
+      "typeVersion": 1,
+      "id": "c61b8b15-5464-438c-88e5-8f441b8c0d05",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "content": "## RAG Agent — Aquapure Company\n",
+        "height": 592,
+        "width": 1152,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        0,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "3d274f23-509b-449d-866e-d030091798a0",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "resource": "draft",
+        "subject": "={{ $json.output.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.output.message }}",
+        "options": {
+          "sendTo": "={{ $('Gmail Trigger').item.json.From }}"
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        880,
+        112
+      ],
+      "id": "318d0d79-c052-43a4-af78-3ff379343bb0",
+      "name": "Create a draft",
+      "webhookId": "4e042fc8-6554-4b60-8546-54d348218c62"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "sessionId",
+              "type": "string",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "id": "2",
+              "name": "Subject",
+              "type": "string",
+              "value": "={{ $json.Subject }}"
+            },
+            {
+              "id": "3",
+              "name": "Body",
+              "type": "string",
+              "value": "={{ $json.snippet }}"
+            },
+            {
+              "id": "4",
+              "name": "From",
+              "type": "string",
+              "value": "={{ $json.From }}"
+            },
+            {
+              "id": "eca2e5cd-2cfa-4493-9195-896e56b8e337",
+              "name": "EmailClean",
+              "value": "={{ $json.From.match(/<([^>]+)>/)?.[1] || $json.From.match(/([\\w._%+-]+@[\\w.-]+\\.[A-Za-z]{2,})/)?.[0] || $json.From }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "38e14cb4-589b-48e1-a07f-34ec39fb280e",
+      "name": "Prepare Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        288,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"subject\": \"Re: Information request about Aquapure filtration systems\",\n  \"message\": \"Hello,<br><br>Thank you for your interest in our water filtration systems.<br><br>Aquapure products offer a complete water purification solution, with cutting-edge technology that guarantees pure and safe water.<br><br>I remain at your disposal for any further information.<br><br>Best regards,<br>The Aquapure team\"\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        560,
+        288
+      ],
+      "id": "cc8d8669-178c-4f8d-ab34-446b90594a4d",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {}
+      },
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        64,
+        112
+      ],
+      "id": "780e0be8-ad42-41a6-833b-054c0bfff102",
+      "name": "Gmail Trigger"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Use this tool to look up a customer's order information.\nThe tool automatically filters by the customer's email to find their orders.\nReturns the full order information, including:\n- shipping status\n- order number\n- order date\n- billing information\n- item details\nDO NOT use this tool for general company information.",
+        "documentId": {
+          "__rl": true,
+          "value": "1nm-1Xw8G6v4tplDiGOhNzRHr0idUla_D_9_LB2PGSSk",
+          "mode": "list",
+          "cachedResultName": "Commandes E-commerce Shopify",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1nm-1Xw8G6v4tplDiGOhNzRHr0idUla_D_9_LB2PGSSk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1999247161,
+          "mode": "list",
+          "cachedResultName": "Commandes Aquapure",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1nm-1Xw8G6v4tplDiGOhNzRHr0idUla_D_9_LB2PGSSk/edit#gid=1999247161"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Email",
+              "lookupValue": "={{ $('Prepare Data').item.json.EmailClean }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        720,
+        288
+      ],
+      "id": "7e5ed7a4-4dce-4eb0-80ba-918850478faf",
+      "name": "Orders Sheet"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        1632,
+        352
+      ],
+      "id": "38ba2bcd-b5f3-4e8b-ae24-e0d8d3aaae2d",
+      "name": "Embeddings OpenAI 2"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        864,
+        432
+      ],
+      "id": "0e40b9ec-2c2f-4f36-a909-91b7ac0ded76",
+      "name": "Embeddings OpenAI"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "tableName": {
+          "__rl": true,
+          "value": "documents",
+          "mode": "list",
+          "cachedResultName": "documents"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStoreSupabase",
+      "typeVersion": 1.3,
+      "position": [
+        1696,
+        160
+      ],
+      "id": "bcef7a7e-4cc4-4ce9-9a16-9da863636437",
+      "name": "Supabase Vector Store 2"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Supabase Vector Store": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download file": {
+      "main": [
+        [
+          {
+            "node": "Supabase Vector Store 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Default Data Loader": {
+      "ai_document": [
+        [
+          {
+            "node": "Supabase Vector Store 2",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Download file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Create a draft",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Data": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Orders Sheet": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI 2": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store 2",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Embeddings OpenAI": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Supabase Vector Store",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "89a31c4b-c409-43e0-9020-140664fe8fb9",
+  "meta": {
+    "instanceId": "558d88703fb65b2d0e44613bc35916258b0f0bf983c5d4730c00c424b77ca36a"
+  },
+  "id": "C2YIh-AoOSXVnFTCmmK-b",
+  "tags": []
+}
