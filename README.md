@@ -99,4 +99,4 @@ n8n-workflows/
 
 ## Author
 
-**Rayan DJEBAR** — [github.com/djebar-rayan](https://github.com/djebar-rayan) · `contact.azamoul@gmail.com`
+**Rayan DJEBAR** — [github.com/djebar-rayan](https://github.com/djebar-rayan) · `djebar.rayan75@gmail.com`
